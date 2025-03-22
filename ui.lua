@@ -20,6 +20,11 @@ function UI.init()
     UI.roadStartVillage = nil
     UI.roadStartX = nil
     UI.roadStartY = nil
+    
+    -- Message system
+    UI.message = nil
+    UI.messageTimer = 0
+    UI.MESSAGE_DURATION = 3 -- seconds to show messages
 end
 
 -- Update UI state
@@ -143,6 +148,20 @@ function UI.update(game, dt)
     else
         UI.showRoadInfo = false
     end
+    
+    -- Update message timer
+    if UI.message then
+        UI.messageTimer = UI.messageTimer - dt
+        if UI.messageTimer <= 0 then
+            UI.message = nil
+        end
+    end
+end
+
+-- Show a temporary message on screen
+function UI.showMessage(text)
+    UI.message = text
+    UI.messageTimer = UI.MESSAGE_DURATION
 end
 
 -- Handle UI clicks
@@ -214,7 +233,7 @@ function UI.handleClick(game, x, y)
     -- Build menu interactions
     if UI.showBuildMenu then
         local menuWidth = 300
-        local menuHeight = 300
+        local menuHeight = 350 -- Increased height for village button
         local menuX = (love.graphics.getWidth() - menuWidth) / 2
         local menuY = (love.graphics.getHeight() - menuHeight) / 2
         
@@ -227,8 +246,17 @@ function UI.handleClick(game, x, y)
         
         -- Check if we're clicking the "Plan Road" button
         if x >= menuX + 20 and x <= menuX + 120 and
-           y >= menuY + menuHeight - 40 and y <= menuY + menuHeight - 10 then
+           y >= menuY + menuHeight - 80 and y <= menuY + menuHeight - 50 then
             UI.roadCreationMode = true
+            UI.showBuildMenu = false
+            return true
+        end
+        
+        -- Check if we're clicking the "Build Village" button
+        if x >= menuX + 20 and x <= menuX + 120 and
+           y >= menuY + menuHeight - 40 and y <= menuY + menuHeight - 10 then
+            -- Switch to village building mode
+            game.uiMode = Config.UI_MODE_BUILDING_VILLAGE
             UI.showBuildMenu = false
             return true
         end
@@ -238,6 +266,19 @@ function UI.handleClick(game, x, y)
            y >= menuY and y <= menuY + menuHeight then
             return true
         end
+    end
+    
+    -- Top bar buttons
+    local topBarHeight = 40
+    if y < topBarHeight then
+        -- Check for build village button in top bar
+        local buildVillageButtonX = love.graphics.getWidth() - 120
+        if x >= buildVillageButtonX and x <= buildVillageButtonX + 100 and y <= topBarHeight then
+            game.uiMode = Config.UI_MODE_BUILDING_VILLAGE
+            return true
+        end
+        
+        return false -- Let other clicks in the top bar through
     end
     
     return false
@@ -258,7 +299,26 @@ function UI.draw(game)
     love.graphics.print("Food: " .. math.floor(game.resources.food), 350, 10)
     love.graphics.print("Builders: " .. #game.builders, 450, 10)
     love.graphics.print("Villages: " .. #game.villages, 550, 10)
-    love.graphics.print("Villagers: " .. #game.villagers, 650, 10)
+    
+    -- Draw build village button in top bar
+    local buildVillageButtonX = love.graphics.getWidth() - 120
+    
+    -- Change button appearance based on game mode
+    if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+        love.graphics.setColor(0.8, 1, 0.8) -- Highlighted when active
+    else
+        love.graphics.setColor(0.6, 0.8, 0.6)
+    end
+    
+    -- Draw button
+    love.graphics.rectangle("fill", buildVillageButtonX, 5, 100, 30)
+    
+    -- Draw button text
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, buildVillageButtonX + 10, 12)
+    
+    -- Restore regular color for other UI
+    love.graphics.setColor(1, 1, 1)
     
     -- Draw tooltip
     if UI.tooltip then
@@ -297,10 +357,37 @@ function UI.draw(game)
         end
     end
     
+    -- Draw village building mode indicator
+    if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+        love.graphics.setColor(0, 0.8, 0)
+        love.graphics.setFont(UI.font)
+        love.graphics.print("Village Building Mode - Click to place (ESC to cancel)", 
+            10, love.graphics.getHeight() - 40)
+    end
+    
+    -- Draw message if there is one
+    if UI.message then
+        local msgWidth = love.graphics.getFont():getWidth(UI.message) + 20
+        local msgHeight = 30
+        local msgX = (love.graphics.getWidth() - msgWidth) / 2
+        local msgY = 60
+        
+        -- Draw message background
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.rectangle("fill", msgX, msgY, msgWidth, msgHeight)
+        love.graphics.setColor(1, 0.8, 0.2)
+        love.graphics.rectangle("line", msgX, msgY, msgWidth, msgHeight)
+        
+        -- Draw message text
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(UI.message, msgX + 10, msgY + 8)
+    end
+    
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom. Press B for build menu.", 10, love.graphics.getHeight() - 20)
+    love.graphics.print("Press B for build menu. Press V for village building. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom.", 
+                        10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
     if #game.villages > 0 then
@@ -377,6 +464,12 @@ function UI.drawVillageSummary(game)
             love.graphics.rectangle("fill", x + 2, y + padding + lineHeight * i, width - 4, lineHeight)
         end
         
+        -- Highlight selected village
+        if game.selectedVillage and game.selectedVillage.id == village.id then
+            love.graphics.setColor(0.9, 0.9, 0.2, 0.5)
+            love.graphics.rectangle("fill", x + 2, y + padding + lineHeight * i, width - 4, lineHeight)
+        end
+        
         -- Show different color based on population status
         if totalPop >= village.populationCapacity then
             love.graphics.setColor(1, 0.4, 0.4) -- Red for full
@@ -393,7 +486,7 @@ end
 -- Draw the build menu
 function UI.drawBuildMenu(game)
     local menuWidth = 300
-    local menuHeight = 300
+    local menuHeight = 350 -- Increased height for village button
     local x = (love.graphics.getWidth() - menuWidth) / 2
     local y = (love.graphics.getHeight() - menuHeight) / 2
     
@@ -435,12 +528,20 @@ function UI.drawBuildMenu(game)
     
     -- Draw road planning option
     love.graphics.setColor(0.8, 0.8, 0.2)
-    love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30)
+    love.graphics.rectangle("fill", x + 20, y + menuHeight - 80, 100, 30)
     love.graphics.setColor(0, 0, 0)
-    love.graphics.print("Plan Road", x + 30, y + menuHeight - 35)
+    love.graphics.print("Plan Road", x + 30, y + menuHeight - 75)
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Roads require builders & resources", x + 125, y + menuHeight - 35)
+    love.graphics.print("Roads require builders & resources", x + 125, y + menuHeight - 75)
+    
+    -- Draw village building option 
+    love.graphics.setColor(0, 0.8, 0)
+    love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30)
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, x + 30, y + menuHeight - 35)
+    love.graphics.setColor(1, 1, 1, 0.7)
+    love.graphics.print("Cost: $" .. Config.VILLAGE_COST .. ", Wood: 20", x + 125, y + menuHeight - 35)
     
     -- Draw close button
     love.graphics.setColor(1, 0.3, 0.3)

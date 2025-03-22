@@ -19,7 +19,9 @@ local game = {
     roads = {},
     resources = Config.STARTING_RESOURCES,
     selectedEntity = nil,
-    selectedVillage = nil  -- Track which village is selected
+    selectedVillage = nil,  -- Track which village is selected
+    uiMode = Config.UI_MODE_NORMAL, -- Current UI interaction mode
+    gameSpeed = Config.TIME_NORMAL_SPEED -- Current game speed
 }
 
 function love.load()
@@ -37,8 +39,11 @@ function love.load()
 end
 
 function love.update(dt)
+    -- Apply game speed
+    local adjustedDt = dt * game.gameSpeed
+    
     -- Update camera
-    local cameraSpeed = 200 * dt
+    local cameraSpeed = 200 * dt -- Camera speed not affected by game speed
     if love.keyboard.isDown("right") then
         game.camera:move(cameraSpeed, 0)
     elseif love.keyboard.isDown("left") then
@@ -51,17 +56,24 @@ function love.update(dt)
         game.camera:move(0, -cameraSpeed)
     end
     
-    game.camera:update(dt)
+    -- Check for spacebar (time acceleration)
+    if love.keyboard.isDown("space") then
+        game.gameSpeed = Config.TIME_FAST_SPEED
+    else
+        game.gameSpeed = Config.TIME_NORMAL_SPEED
+    end
     
-    -- Update entities
-    Village.update(game.villages, game, dt)
-    Builder.update(game.builders, game, dt)
-    Building.update(game.buildings, game, dt)
-    Villager.update(game.villagers, game, dt)
-    Road.update(game.roads, game, dt)
+    game.camera:update(dt) -- Camera update not affected by game speed
+    
+    -- Update entities with adjusted time
+    Village.update(game.villages, game, adjustedDt)
+    Builder.update(game.builders, game, adjustedDt)
+    Building.update(game.buildings, game, adjustedDt)
+    Villager.update(game.villagers, game, adjustedDt)
+    Road.update(game.roads, game, adjustedDt)
     
     -- Update UI
-    UI.update(game, dt)
+    UI.update(game, dt) -- UI updates at normal speed
 end
 
 function love.draw()
@@ -74,11 +86,28 @@ function love.draw()
     -- Draw entities in proper order
     drawEntities()
     
+    -- Draw village placement preview if in building mode
+    if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+        local mouseX, mouseY = love.mouse.getPosition()
+        local worldX, worldY = game.camera:screenToWorld(mouseX, mouseY)
+        
+        love.graphics.setColor(0, 0.8, 0, 0.5)
+        love.graphics.circle("fill", worldX, worldY, 15)
+        love.graphics.setColor(1, 1, 1, 0.7)
+        love.graphics.print("Click to place village", worldX - 60, worldY - 40)
+    end
+    
     -- End camera transform
     game.camera:endDraw()
     
     -- Draw UI
     UI.draw(game)
+    
+    -- Draw game speed indicator
+    if game.gameSpeed > Config.TIME_NORMAL_SPEED then
+        love.graphics.setColor(1, 0.8, 0.2)
+        love.graphics.print("FAST FORWARD (x" .. game.gameSpeed .. ")", 10, love.graphics.getHeight() - 40)
+    end
 end
 
 function drawGrid()
@@ -158,23 +187,9 @@ function love.mousepressed(x, y, button)
         if y < 40 then return end
         if UI.handleClick(game, x, y) then return end
         
-        -- Check if we're clicking on an existing village
-        local clickedVillage = nil
-        for _, village in ipairs(game.villages) do
-            if Utils.distance(worldX, worldY, village.x, village.y) < 15 then
-                clickedVillage = village
-                break
-            end
-        end
-        
-        if clickedVillage then
-            -- Select/focus the village
-            game.selectedVillage = clickedVillage
-            
-            -- Center camera on the village (with smooth transition)
-            game.camera:setTarget(clickedVillage.x - love.graphics.getWidth() / 2, clickedVillage.y - love.graphics.getHeight() / 2)
-        else
-            -- Place a new village if we have enough resources
+        -- Handle based on UI mode
+        if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+            -- In village building mode, place a new village if we have resources
             if game.money >= Config.VILLAGE_COST and game.resources.wood >= 20 then
                 game.money = game.money - Config.VILLAGE_COST
                 game.resources.wood = game.resources.wood - 20
@@ -183,15 +198,38 @@ function love.mousepressed(x, y, button)
                 local newVillage = Village.new(worldX, worldY)
                 table.insert(game.villages, newVillage)
                 
-                -- No longer automatically create roads - villagers will build them as needed
-                
                 -- Select the new village
                 game.selectedVillage = newVillage
+                
+                -- Return to normal mode
+                game.uiMode = Config.UI_MODE_NORMAL
+            else
+                -- Not enough resources, show message through UI
+                UI.showMessage("Not enough resources! Need $" .. Config.VILLAGE_COST .. " and " .. 20 .. " wood.")
+            end
+        else
+            -- Normal mode - handle selection
+            -- Check if we're clicking on an existing village
+            local clickedVillage = nil
+            for _, village in ipairs(game.villages) do
+                if Utils.distance(worldX, worldY, village.x, village.y) < 15 then
+                    clickedVillage = village
+                    break
+                end
+            end
+            
+            if clickedVillage then
+                -- Select/focus the village
+                game.selectedVillage = clickedVillage
+                
+                -- Center camera on the village (with smooth transition)
+                game.camera:setTarget(clickedVillage.x - love.graphics.getWidth() / 2, clickedVillage.y - love.graphics.getHeight() / 2)
             end
         end
     elseif button == 2 then
-        -- Right-click to deselect current village
+        -- Right-click to deselect current village and cancel build mode
         game.selectedVillage = nil
+        game.uiMode = Config.UI_MODE_NORMAL
     end
 end
 
@@ -211,6 +249,13 @@ function love.keypressed(key)
         UI.showBuildMenu = not UI.showBuildMenu
     end
     
+    -- Exit village building mode with escape
+    if key == "escape" then
+        game.uiMode = Config.UI_MODE_NORMAL
+        game.selectedVillage = nil
+        UI.showBuildMenu = false
+    end
+    
     -- Number keys to quickly select villages by index
     if key >= "1" and key <= "9" then
         local index = tonumber(key)
@@ -223,11 +268,12 @@ function love.keypressed(key)
         end
     end
     
-    -- Escape to deselect
-    if key == "escape" then
-        game.selectedVillage = nil
-        UI.showBuildMenu = false
+    -- V key to toggle village building mode
+    if key == "v" then
+        if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+            game.uiMode = Config.UI_MODE_NORMAL
+        else
+            game.uiMode = Config.UI_MODE_BUILDING_VILLAGE
+        end
     end
-    
-    -- Remove automatic road building with R key
 end

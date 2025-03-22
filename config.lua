@@ -77,7 +77,17 @@ local Config = {
     -- Resource transport
     RESOURCE_CARRY_CAPACITY = 5,    -- How many resources a villager can carry
     RESOURCE_EXTRACT_TIME = 5,      -- Time to extract resources at a resource building
-    RESOURCE_BONUS_WITH_ROAD = 1.5  -- Multiplier for resource extraction when connected by roads
+    RESOURCE_BONUS_WITH_ROAD = 1.5,  -- Multiplier for resource extraction when connected by roads
+    
+    -- Game speed settings
+    TIME_NORMAL_SPEED = 1.0,        -- Normal game speed (1x)
+    TIME_FAST_SPEED = 3.0,          -- Fast game speed when spacebar is held (3x)
+    CURRENT_GAME_SPEED = 1.0,       -- Current game speed multiplier
+    
+    -- Game UI settings
+    UI_MODE_NORMAL = "normal",      -- Normal interaction mode
+    UI_MODE_BUILDING_VILLAGE = "building_village", -- Mode for placing new villages
+    UI_VILLAGE_BUILD_BUTTON_TEXT = "Build Village"  -- Text for the village build button
 }
 
 return Config 

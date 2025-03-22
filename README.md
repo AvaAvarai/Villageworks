@@ -2,7 +2,13 @@
 
 Villageworks is a civilization management game where you create and manage a network of thriving settlements.
 
-![Villageworks](docs/screenshot.png)
+## Demo Video
+
+Watch our gameplay demonstration to see Villageworks in action:
+
+[![Villageworks Demo](docs/screenshot.png)](https://youtu.be/5IYsQdmNwtY)
+
+Click the image above or visit [https://youtu.be/5IYsQdmNwtY](https://youtu.be/5IYsQdmNwtY) to watch the demo.
 
 ## Overview
 

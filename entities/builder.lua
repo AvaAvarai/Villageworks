@@ -16,7 +16,11 @@ function Builder.new(x, y, villageId)
         targetX = nil,
         targetY = nil,
         currentRoad = nil,
-        pathIndex = 1 -- Current position in the road path
+        pathIndex = 1, -- Current position in the road path
+        -- New properties for pathfinding
+        path = nil,    -- Calculated path to target
+        currentPathIndex = 1, -- Current position in the path
+        needsPathRecalculation = false -- Flag to recalculate path
     }, Builder)
     
     return builder
@@ -28,12 +32,18 @@ function Builder.update(builders, game, dt)
             -- Look for building tasks if no current task
             builder:findTask(game)
         elseif builder.state == "moving" then
-            -- Move to building site
-            local speed = builder:getMovementSpeed(game)
-            local arrived = Utils.moveToward(builder, builder.targetX, builder.targetY, speed, dt)
+            -- Check if we need to calculate a path
+            if not builder.path or builder.needsPathRecalculation then
+                builder:calculatePath(game, builder.targetX, builder.targetY)
+                builder.needsPathRecalculation = false
+            end
+            
+            -- Move along the calculated path
+            local arrived = builder:moveAlongPath(game, dt)
             
             if arrived then
                 builder.state = "building"
+                builder.path = nil -- Clear the path when arrived
             end
         elseif builder.state == "building" then
             -- Build the structure
@@ -580,6 +590,67 @@ function Builder.findBuildingLocation(builder, game, buildingType)
     end
     
     return buildX, buildY
+end
+
+-- Calculate path to destination avoiding water
+function Builder:calculatePath(game, destX, destY)
+    -- Find a path avoiding water
+    local tilePath = game.map:findPathAvoidingWater(self.x, self.y, destX, destY)
+    
+    -- Convert tile path to world coordinates
+    self.path = game.map:pathToWorldCoordinates(tilePath)
+    self.currentPathIndex = 1
+    
+    -- If no path found, show warning
+    if not self.path then
+        -- Try finding a buildable position near the destination
+        local nearestX, nearestY = game.map:findNearestBuildablePosition(destX, destY)
+        if nearestX and nearestY then
+            -- Try path to nearest buildable position
+            tilePath = game.map:findPathAvoidingWater(self.x, self.y, nearestX, nearestY)
+            self.path = game.map:pathToWorldCoordinates(tilePath)
+            self.currentPathIndex = 1
+            
+            -- Update target to the nearest buildable position
+            self.targetX = nearestX
+            self.targetY = nearestY
+        end
+        
+        -- If still no path, unable to reach destination
+        if not self.path then
+            require("ui").showMessage("Builder can't find a path to destination, avoiding water")
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- Move along the calculated path
+function Builder:moveAlongPath(game, dt)
+    -- If no path or we're at the end of the path, we're done
+    if not self.path or self.currentPathIndex > #self.path then
+        return true -- Arrived at destination
+    end
+    
+    -- Get current waypoint
+    local currentWaypoint = self.path[self.currentPathIndex]
+    
+    -- Move toward current waypoint
+    local speed = self:getMovementSpeed(game)
+    local arrived = Utils.moveToward(self, currentWaypoint.x, currentWaypoint.y, speed, dt)
+    
+    if arrived then
+        -- Move to next waypoint
+        self.currentPathIndex = self.currentPathIndex + 1
+        
+        -- If we've reached the end of the path, we're done
+        if self.currentPathIndex > #self.path then
+            return true
+        end
+    end
+    
+    return false -- Not arrived at final destination yet
 end
 
 return Builder 

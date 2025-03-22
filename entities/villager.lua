@@ -20,7 +20,12 @@ function Villager.new(x, y, villageId, homeBuilding)
         -- Resource transport
         carriedResource = nil,
         resourceAmount = 0,
-        homeVillage = nil
+        homeVillage = nil,
+        
+        -- Pathfinding properties
+        path = nil,    -- Calculated path to target
+        currentPathIndex = 1, -- Current position in the path
+        needsPathRecalculation = false -- Flag to recalculate path
     }, Villager)
     
     return villager
@@ -43,13 +48,19 @@ function Villager.update(villagers, game, dt)
             -- Find a workplace that needs workers
             villager:findWork(game)
         elseif villager.state == "going_to_work" then
-            -- Move toward workplace
-            local speed = villager:getMovementSpeed(game)
-            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, speed, dt)
+            -- Check if we need to calculate a path
+            if not villager.path or villager.needsPathRecalculation then
+                villager:calculatePath(game, villager.targetX, villager.targetY)
+                villager.needsPathRecalculation = false
+            end
+            
+            -- Move along the calculated path
+            local arrived = villager:moveAlongPath(game, dt)
             
             if arrived then
                 villager.state = "working"
                 villager.workTimer = 0
+                villager.path = nil -- Clear the path
             end
         elseif villager.state == "working" then
             -- Working at workplace
@@ -97,9 +108,14 @@ function Villager.update(villagers, game, dt)
                 end
             end
         elseif villager.state == "transporting" then
-            -- Moving to village with resources
-            local speed = villager:getMovementSpeed(game)
-            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, speed, dt)
+            -- Check if we need to calculate a path
+            if not villager.path or villager.needsPathRecalculation then
+                villager:calculatePath(game, villager.targetX, villager.targetY)
+                villager.needsPathRecalculation = false
+            end
+            
+            -- Move along the calculated path
+            local arrived = villager:moveAlongPath(game, dt)
             
             if arrived and villager.carriedResource and villager.resourceAmount > 0 then
                 -- Deliver resources to village 
@@ -128,11 +144,18 @@ function Villager.update(villagers, game, dt)
                 else
                     villager.state = "seeking_work"
                 end
+                
+                villager.path = nil -- Clear the path
             end
         elseif villager.state == "returning_home" then
-            -- Move toward home
-            local speed = villager:getMovementSpeed(game)
-            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, speed, dt)
+            -- Check if we need to calculate a path
+            if not villager.path or villager.needsPathRecalculation then
+                villager:calculatePath(game, villager.targetX, villager.targetY)
+                villager.needsPathRecalculation = false
+            end
+            
+            -- Move along the calculated path
+            local arrived = villager:moveAlongPath(game, dt)
             
             if arrived then
                 -- Rest for a bit then go back to work
@@ -143,6 +166,8 @@ function Villager.update(villagers, game, dt)
                     villager.targetX = villager.workplace.x
                     villager.targetY = villager.workplace.y
                 end
+                
+                villager.path = nil -- Clear the path
             end
         end
     end
@@ -206,6 +231,66 @@ function Villager:getMovementSpeed(game)
     else
         return Config.VILLAGER_SPEED
     end
+end
+
+-- Calculate path to destination avoiding water
+function Villager:calculatePath(game, destX, destY)
+    -- Find a path avoiding water
+    local tilePath = game.map:findPathAvoidingWater(self.x, self.y, destX, destY)
+    
+    -- Convert tile path to world coordinates
+    self.path = game.map:pathToWorldCoordinates(tilePath)
+    self.currentPathIndex = 1
+    
+    -- If no path found, try finding a nearby accessible location
+    if not self.path then
+        -- Try finding a buildable position near the destination
+        local nearestX, nearestY = game.map:findNearestBuildablePosition(destX, destY)
+        if nearestX and nearestY then
+            -- Try path to nearest buildable position
+            tilePath = game.map:findPathAvoidingWater(self.x, self.y, nearestX, nearestY)
+            self.path = game.map:pathToWorldCoordinates(tilePath)
+            self.currentPathIndex = 1
+            
+            -- Update target to the nearest buildable position
+            self.targetX = nearestX
+            self.targetY = nearestY
+        end
+        
+        -- If still no path, unable to reach destination
+        if not self.path then
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- Move along the calculated path
+function Villager:moveAlongPath(game, dt)
+    -- If no path or we're at the end of the path, we're done
+    if not self.path or self.currentPathIndex > #self.path then
+        return true -- Arrived at destination
+    end
+    
+    -- Get current waypoint
+    local currentWaypoint = self.path[self.currentPathIndex]
+    
+    -- Move toward current waypoint
+    local speed = self:getMovementSpeed(game)
+    local arrived = Utils.moveToward(self, currentWaypoint.x, currentWaypoint.y, speed, dt)
+    
+    if arrived then
+        -- Move to next waypoint
+        self.currentPathIndex = self.currentPathIndex + 1
+        
+        -- If we've reached the end of the path, we're done
+        if self.currentPathIndex > #self.path then
+            return true
+        end
+    end
+    
+    return false -- Not arrived at final destination yet
 end
 
 function Villager:draw()

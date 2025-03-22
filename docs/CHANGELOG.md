@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added A* pathfinding algorithm to find paths around water tiles
+- Added intelligent path following for villagers and builders
+
+### Changed
+
+- Units (villagers and builders) now path around water instead of walking over it
+- Improved movement logic with waypoint-based pathfinding
+- Units prefer to follow roads when available (lower movement cost)
+
 ## [0.1.2] - 2025-03-22
 
 ### Added

@@ -602,4 +602,174 @@ function Map:isPositionClearOfBuildings(worldX, worldY, game, buildingSize)
     return true
 end
 
+-- Find a path between two points that avoids water tiles (A* algorithm)
+function Map:findPathAvoidingWater(startX, startY, endX, endY)
+    -- Convert world coordinates to tile coordinates
+    local tileStartX, tileStartY = Map:worldToTile(startX, startY)
+    local tileEndX, tileEndY = Map:worldToTile(endX, endY)
+    
+    -- Ensure start and end points are on valid tiles
+    if not Map:isWithinBounds(startX, startY) or not Map:isWithinBounds(endX, endY) then
+        return nil
+    end
+    
+    -- If start is on water, find closest land tile
+    if Map:getTileType(tileStartX, tileStartY) == Map.TILE_WATER then
+        local landX, landY = Map:findNearestBuildablePosition(startX, startY)
+        if not landX then
+            return nil -- No valid start position
+        end
+        tileStartX, tileStartY = Map:worldToTile(landX, landY)
+    end
+    
+    -- If end is on water, find closest land tile
+    if Map:getTileType(tileEndX, tileEndY) == Map.TILE_WATER then
+        local landX, landY = Map:findNearestBuildablePosition(endX, endY)
+        if not landX then
+            return nil -- No valid end position
+        end
+        tileEndX, tileEndY = Map:worldToTile(landX, landY)
+    end
+    
+    -- Define offsets for the 8 neighboring tiles
+    local neighbors = {
+        {x = -1, y = -1}, {x = 0, y = -1}, {x = 1, y = -1},
+        {x = -1, y = 0},                   {x = 1, y = 0},
+        {x = -1, y = 1},  {x = 0, y = 1},  {x = 1, y = 1}
+    }
+    
+    -- Calculate heuristic (estimated distance to goal)
+    local function heuristic(x, y)
+        return math.abs(x - tileEndX) + math.abs(y - tileEndY)
+    end
+    
+    -- Node representation
+    local function createNode(x, y, parent, g)
+        return {
+            x = x,
+            y = y,
+            parent = parent,
+            g = g,          -- Cost from start
+            h = heuristic(x, y), -- Estimated cost to end
+            f = g + heuristic(x, y) -- Total estimated cost
+        }
+    end
+    
+    -- A* algorithm
+    local openSet = {}
+    local closedSet = {}
+    local startNode = createNode(tileStartX, tileStartY, nil, 0)
+    
+    -- Helper function to find node with lowest f score in open set
+    local function findLowestFScore()
+        local lowestIndex = 1
+        local lowestF = openSet[1].f
+        
+        for i = 2, #openSet do
+            if openSet[i].f < lowestF then
+                lowestF = openSet[i].f
+                lowestIndex = i
+            end
+        end
+        
+        return lowestIndex
+    end
+    
+    -- Helper function to check if node is in a set
+    local function isInSet(set, x, y)
+        for _, node in ipairs(set) do
+            if node.x == x and node.y == y then
+                return true
+            end
+        end
+        return false
+    end
+    
+    -- Add start node to open set
+    table.insert(openSet, startNode)
+    
+    -- Main A* loop
+    while #openSet > 0 do
+        -- Get node with lowest f score
+        local currentIndex = findLowestFScore()
+        local current = openSet[currentIndex]
+        
+        -- If current node is the goal, reconstruct and return the path
+        if current.x == tileEndX and current.y == tileEndY then
+            local path = {}
+            while current do
+                table.insert(path, 1, {x = current.x, y = current.y})
+                current = current.parent
+            end
+            return path
+        end
+        
+        -- Move current node from open to closed set
+        table.remove(openSet, currentIndex)
+        table.insert(closedSet, current)
+        
+        -- Check all neighboring tiles
+        for _, neighbor in ipairs(neighbors) do
+            local nx = current.x + neighbor.x
+            local ny = current.y + neighbor.y
+            
+            -- Check if neighbor is valid (within bounds and not water)
+            if nx >= 1 and ny >= 1 and nx <= Map.width and ny <= Map.height and
+               Map:getTileType(nx, ny) ~= Map.TILE_WATER and
+               not isInSet(closedSet, nx, ny) then
+                
+                -- Calculate cost to neighbor
+                local moveCost = 1
+                if neighbor.x ~= 0 and neighbor.y ~= 0 then
+                    moveCost = 1.414 -- Diagonal movement costs more
+                end
+                
+                -- If this is a road tile, give it slightly lower cost
+                if Map:getTileType(nx, ny) == Map.TILE_ROAD then
+                    moveCost = moveCost * 0.8 -- Prefer following roads
+                end
+                
+                local tentativeG = current.g + moveCost
+                local inOpenSet = false
+                
+                -- Check if neighbor is already in open set
+                for i, node in ipairs(openSet) do
+                    if node.x == nx and node.y == ny then
+                        inOpenSet = true
+                        if tentativeG < node.g then
+                            -- Found a better path to this node
+                            node.g = tentativeG
+                            node.f = tentativeG + node.h
+                            node.parent = current
+                        end
+                        break
+                    end
+                end
+                
+                -- If not in open set, add it
+                if not inOpenSet then
+                    local newNode = createNode(nx, ny, current, tentativeG)
+                    table.insert(openSet, newNode)
+                end
+            end
+        end
+    end
+    
+    -- No path found
+    return nil
+end
+
+-- Convert a path of tiles to world coordinates
+function Map:pathToWorldCoordinates(path)
+    if not path then return nil end
+    
+    local worldPath = {}
+    for _, tile in ipairs(path) do
+        local wx, wy = Map:tileToWorld(tile.x, tile.y)
+        table.insert(worldPath, {x = wx, y = wy})
+    end
+    
+    return worldPath
+end
+
 return Map 

@@ -10,12 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added A* pathfinding algorithm to find paths around water tiles
 - Added intelligent path following for villagers and builders
+- Added dynamic forest system with natural regrowth mechanics
+- Added forest harvesting for wood resource collection
+- Added proximity-based forest detection and management functions
+- Added spiral search pattern for efficient forest tile location
 
 ### Changed
 
 - Units (villagers and builders) now path around water instead of walking over it
 - Improved movement logic with waypoint-based pathfinding
 - Units prefer to follow roads when available (lower movement cost)
+- Forest tiles now impact movement with higher traversal costs
+- Implemented natural forest regrowth from adjacent forest tiles
+
+### Fixed
+
+- Fixed syntax error in map.lua that was preventing the game from starting
+- Fixed forest regrowth logic to work correctly in various edge cases
+- Fixed a critical issue where loading a saved game would generate a new map instead of restoring the saved map
 
 ## [0.1.2] - 2025-03-22
 
@@ -42,7 +54,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-- Fixed a critical issue where loading a saved game would generate a new map instead of restoring the saved map
 - Fixed save/load system to properly serialize and deserialize map data
 - Implemented proper map state persistence during game loads
 - Fixed fishing hut placement to ensure they're built only next to water tiles
@@ -54,21 +65,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed menu button hover detection offset issue
 - Fixed documentation popups with proper scrolling functionality
 - Fixed various UI module integration issues
-
-### UI Improvements
-
-- Added transparent overlay showing building radius when hovering over villages
-- Visual feedback helps players understand building placement constraints
-- Improved building queue system to pre-plan building positions
-- Added background image to the main menu for a more polished look
-- Revamped main menu with larger font, game tagline, and interactive button hover effects
-- Added subtle animations to menu elements for a more engaging experience
-- Enhanced main menu with dramatic title effects and improved background gradient
-- Increased title and button size for better visibility and easier interaction
-- Added rounded corners to all buttons and menu panels for a modern look
-- Fixed button hover detection to precisely match button dimensions
-- Improved documentation system with scrollable content
-- Added keyboard and mouse wheel navigation to documentation popups
 
 ## [0.1.1] - 2025-06-22
 
@@ -125,15 +121,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Population management
 - Camera controls with zoom
 - Basic UI elements
-
-## Future Plans
-
-- Terrain types and effects
-- Seasons and weather
-- Enhanced villager behavior
-- Trade routes and economy
-- Research and technology progression
-- Save/load functionality
-- Custom map creation
-- Village specialization
-- Achievements and challenges

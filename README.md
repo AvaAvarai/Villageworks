@@ -153,6 +153,18 @@ villageworks/
     └── road.lua       # Road system
 ```
 
+## Future Plans
+
+- Terrain types and effects
+- Seasons and weather
+- Enhanced villager behavior
+- Trade routes and economy
+- Research and technology progression
+- Save/load functionality
+- Custom map creation
+- Village specialization
+- Achievements and challenges
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

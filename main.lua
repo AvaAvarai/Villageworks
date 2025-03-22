@@ -46,8 +46,16 @@ function game:reset(isLoading)
     
     -- Reset camera position
     if self.camera then
-        self.camera:setTarget(0, 0)
-        self.camera.targetScale = 1
+        if isLoading then
+            -- When loading a game, just reset zoom
+            self.camera.targetScale = 1
+        else
+            -- When starting a new game, center on the world
+            local worldCenterX = Config.WORLD_WIDTH / 2
+            local worldCenterY = Config.WORLD_HEIGHT / 2
+            self.camera:setTarget(worldCenterX - love.graphics.getWidth() / 2, worldCenterY - love.graphics.getHeight() / 2)
+            self.camera.targetScale = 1
+        end
     end
     
     -- Regenerate the map only if not loading a saved game
@@ -79,6 +87,11 @@ function love.load()
     -- Initialize map
     Map.init()
     game.map = Map
+    
+    -- Center camera at the middle of the world
+    local worldCenterX = Config.WORLD_WIDTH / 2
+    local worldCenterY = Config.WORLD_HEIGHT / 2
+    game.camera:setTarget(worldCenterX - love.graphics.getWidth() / 2, worldCenterY - love.graphics.getHeight() / 2)
     
     -- Initialize UI
     UI.init()

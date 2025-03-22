@@ -30,6 +30,12 @@ Villageworks is a relaxing yet engaging management simulation where you take on 
    - **macOS**: Use `open -n -a love "path/to/villageworks"` or drag the folder onto the LÖVE application
    - **Linux**: Use `love /path/to/villageworks`
 
+### Building the Game
+
+1. Download or clone this repository
+2. Navigate to the folder and run `zip -9 -r ../villageworks.love ./*`.
+3. Go one folder up and run `love villageworks.love`
+
 ## Gameplay Guide
 
 ### Getting Started

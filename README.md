@@ -2,6 +2,8 @@
 
 Villageworks is an in-dev civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE. Current version: 0.1.2.
 
+Main menu: ![main menu screenshot](data/menu.png)
+
 ## Demo Video
 
 Watch our gameplay demonstration to see Villageworks in action:

@@ -1,6 +1,6 @@
 # Villageworks
 
-Villageworks is an in-dev civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE.
+Villageworks is an in-dev civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE. Current version: 0.1.2.
 
 ## Demo Video
 
@@ -14,6 +14,8 @@ Click the image above or visit [https://youtu.be/PIl3rFCVl0s](https://youtu.be/P
 
 Villageworks is a relaxing yet engaging management simulation where you take on the role of a benevolent overseer guiding the development of human civilization. Create multiple villages with historical names, construct buildings, establish resource production chains, and connect your settlements with road networks to build a thriving society.
 
+The game features a modern, modular code architecture with specialized components for UI, entity management, and game state serialization to ensure maintainability and extensibility.
+
 ## Key Features
 
 - **Rich Settlement System**: Create multiple villages, each with a unique historical name
@@ -23,6 +25,7 @@ Villageworks is a relaxing yet engaging management simulation where you take on 
 - **Dynamic Growth**: Watch as villages develop organically based on resource availability and population needs
 - **Save & Load**: Preserve your progress with a complete game state saving system
 - **Visual Indicators**: Color-coded visual feedback helps quickly identify settlement needs
+- **Modern UI**: Intuitive, modular interface with documentation, customizable menus, and smooth transitions
 
 ## Installation
 
@@ -121,14 +124,24 @@ villageworks/
 ├── config.lua       # Game constants and settings
 ├── utils.lua        # Utility functions
 ├── camera.lua       # Camera controls and viewport
-├── ui.lua           # User interface elements
+├── ui.lua           # Main UI coordinator
+├── ui/              # Modular UI components
+│   ├── documentation.lua  # Documentation system
+│   ├── mainmenu.lua       # Main menu interface
+│   └── saveload.lua       # Save/load functionality
 ├── main.lua         # Entry point and game loop
 ├── map.lua          # Map generation and rendering
+├── version.lua      # Version tracking
 ├── lib/
 │   └── serpent.lua  # Serialization library
 ├── data/
 │   ├── village_names.lua  # Historical village names
-│   └── tiles.png     # Tileset graphics
+│   ├── background.png     # Menu background
+│   └── tiles.png          # Tileset graphics
+├── docs/            # Documentation files
+│   ├── GAME_GUIDE.md      # How to play guide
+│   ├── ABOUT.md           # About the game
+│   └── CHANGELOG.md       # Version history
 ├── saves/           # Directory for saved games
 └── entities/
     ├── village.lua    # Village entity

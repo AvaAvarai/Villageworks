@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-03-22
+
 ### Added
 
 - Added the serpent library for Lua serialization, enabling save/load functionality
@@ -15,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added visual building radius overlay when hovering over villages
 - Added improved building placement rules to prevent building on villages or overlapping with in-progress construction
 - Added building queue position planning system to prevent overlaps
+- Implemented modular UI code structure with separate modules for different UI components
 
 ### Changed
 
@@ -24,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Enhanced builder AI with improved positioning logic to prevent building overlaps
 - Added MAX_BUILD_DISTANCE configuration parameter to control building placement limits
 - Increased safety margins for building placement to prevent any potential overlaps
+- Refactored UI code into separate modules for maintainability
 
 ### Fixed
 
@@ -37,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed issue where buildings could overlap with villages or in-progress construction
 - Fixed rare issue where planned buildings could overlap with each other in the queue
 - Fixed menu button hover detection offset issue
+- Fixed documentation popups with proper scrolling functionality
+- Fixed various UI module integration issues
 
 ### UI Improvements
 
@@ -50,6 +56,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Increased title and button size for better visibility and easier interaction
 - Added rounded corners to all buttons and menu panels for a modern look
 - Fixed button hover detection to precisely match button dimensions
+- Improved documentation system with scrollable content
+- Added keyboard and mouse wheel navigation to documentation popups
 
 ## [0.1.1] - 2025-06-22
 

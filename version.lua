@@ -2,7 +2,7 @@
 local Version = {
     major = 0,
     minor = 1,
-    patch = 1,
+    patch = 2,
     releaseDate = "2025-03-22"
 }
 

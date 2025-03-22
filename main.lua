@@ -356,7 +356,18 @@ end
 function love.resize(w, h)
     -- Update camera if it exists
     if game.camera then
+        -- Calculate world coordinates of the screen center before resize
+        local oldCenterX = love.graphics.getWidth() / 2
+        local oldCenterY = love.graphics.getHeight() / 2
+        local worldCenterX, worldCenterY = game.camera:screenToWorld(oldCenterX, oldCenterY)
+        
         -- Update camera bounds based on new window size
         game.camera:recalculateBounds()
+        
+        -- Recalculate the camera position to keep the same world point at the center
+        local newCenterX = w / 2
+        local newCenterY = h / 2
+        game.camera.targetX = worldCenterX * game.camera.scale - newCenterX
+        game.camera.targetY = worldCenterY * game.camera.scale - newCenterY
     end
 end

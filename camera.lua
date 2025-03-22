@@ -74,7 +74,26 @@ function Camera:setTarget(x, y)
 end
 
 function Camera:zoom(factor)
+    -- Store old scale for calculations
+    local oldScale = self.targetScale
+    
+    -- Update the target scale with constraints
     self.targetScale = math.max(0.5, math.min(2.0, self.targetScale * factor))
+    
+    -- If scale changed, adjust target position to zoom toward screen center
+    if oldScale ~= self.targetScale then
+        -- Get the center of the screen in world coordinates
+        local centerX = self.screenWidth / 2
+        local centerY = self.screenHeight / 2
+        local worldCenterX, worldCenterY = self:screenToWorld(centerX, centerY)
+        
+        -- Calculate how much the position needs to change based on the zoom factor
+        local zoomFactor = self.targetScale / oldScale
+        
+        -- Adjust the camera position to keep worldCenter in the same screen position
+        self.targetX = worldCenterX * self.targetScale - centerX
+        self.targetY = worldCenterY * self.targetScale - centerY
+    end
 end
 
 function Camera:beginDraw()

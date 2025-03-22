@@ -9,10 +9,42 @@ function Camera.new()
         targetX = 0,
         targetY = 0,
         targetScale = 1,
-        smoothing = 0.1
+        smoothing = 0.1,
+        screenWidth = love.graphics.getWidth(),
+        screenHeight = love.graphics.getHeight(),
+        maxX = 0,
+        maxY = 0
     }, Camera)
     
+    -- Calculate initial bounds
+    camera:recalculateBounds()
+    
     return camera
+end
+
+function Camera:recalculateBounds()
+    local Config = require("config")
+    self.screenWidth = love.graphics.getWidth()
+    self.screenHeight = love.graphics.getHeight()
+    
+    -- Calculate max camera position based on world size and current screen size
+    -- Adjust by one tile size to prevent seeing beyond the edge
+    local tileSize = Config.TILE_SIZE * self.scale
+    self.maxX = math.max(0, Config.WORLD_WIDTH * self.scale - self.screenWidth - tileSize)
+    self.maxY = math.max(0, Config.WORLD_HEIGHT * self.scale - self.screenHeight - tileSize)
+    
+    -- Re-apply constraints after recalculating
+    self:applyConstraints()
+end
+
+function Camera:applyConstraints()
+    -- Apply constraints to actual position
+    self.x = math.max(0, math.min(self.x, self.maxX))
+    self.y = math.max(0, math.min(self.y, self.maxY))
+    
+    -- Also constrain targets to prevent continuous movement towards invalid positions
+    self.targetX = math.max(0, math.min(self.targetX, self.maxX))
+    self.targetY = math.max(0, math.min(self.targetY, self.maxY))
 end
 
 function Camera:update(dt)
@@ -21,24 +53,14 @@ function Camera:update(dt)
     self.y = self.y + (self.targetY - self.y) * self.smoothing
     self.scale = self.scale + (self.targetScale - self.scale) * self.smoothing
     
-    -- Hard constrain the camera to prevent going beyond the map boundaries
+    -- Recalculate bounds if the scale has changed
     local Config = require("config")
-    local screenWidth = love.graphics.getWidth()
-    local screenHeight = love.graphics.getHeight()
-    
-    -- Calculate max camera position based on world size and screen size
-    -- Adjust by one tile size to prevent seeing beyond the edge
     local tileSize = Config.TILE_SIZE * self.scale
-    local maxX = math.max(0, Config.WORLD_WIDTH * self.scale - screenWidth - tileSize)
-    local maxY = math.max(0, Config.WORLD_HEIGHT * self.scale - screenHeight - tileSize)
+    self.maxX = math.max(0, Config.WORLD_WIDTH * self.scale - self.screenWidth - tileSize)
+    self.maxY = math.max(0, Config.WORLD_HEIGHT * self.scale - self.screenHeight - tileSize)
     
-    -- Apply constraints to actual position (not target)
-    self.x = math.max(0, math.min(self.x, maxX))
-    self.y = math.max(0, math.min(self.y, maxY))
-    
-    -- Also constrain targets to prevent continuous movement towards invalid positions
-    self.targetX = math.max(0, math.min(self.targetX, maxX))
-    self.targetY = math.max(0, math.min(self.targetY, maxY))
+    -- Apply constraints
+    self:applyConstraints()
 end
 
 function Camera:move(dx, dy)

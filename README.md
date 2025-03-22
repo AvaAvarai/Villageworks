@@ -6,9 +6,9 @@ Villageworks is a civilization management game where you create and manage a net
 
 Watch our gameplay demonstration to see Villageworks in action:
 
-[![Villageworks Demo](docs/screenshot.png)](https://youtu.be/5IYsQdmNwtY)
+Villageworks growth of Carthage Demo: [![Villageworks growth of Carthage Demo](docs/screenshot.png)](https://youtu.be/PIl3rFCVl0s)
 
-Click the image above or visit [https://youtu.be/5IYsQdmNwtY](https://youtu.be/5IYsQdmNwtY) to watch the demo.
+Click the image above or visit [https://youtu.be/PIl3rFCVl0s](https://youtu.be/PIl3rFCVl0s) to watch the demo.
 
 ## Overview
 

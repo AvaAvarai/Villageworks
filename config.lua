@@ -68,7 +68,7 @@ local Config = {
     
     -- Resource initial values
     STARTING_MONEY = 100,
-    STARTING_RESOURCES = { wood = 50, stone = 30, food = 40 },
+    STARTING_RESOURCES = { wood = 200, stone = 200, food = 200 },
     
     -- Road settings
     ROAD_COST_PER_UNIT = { wood = 0.05, stone = 0.02 },

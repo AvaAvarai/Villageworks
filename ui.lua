@@ -10,6 +10,9 @@ function UI.init()
     UI.smallFont = love.graphics.newFont(10)
     UI.titleFont = love.graphics.newFont(32)  -- Larger font for titles
     
+    -- Pre-load background image
+    UI.backgroundImage = love.graphics.newImage("data/background.png")
+    
     -- UI state
     UI.hoveredBuilding = nil
     UI.hoveredVillage = nil
@@ -1741,9 +1744,30 @@ end
 
 -- Draw the main menu
 function UI.drawMainMenu()
-    -- Draw background (could be replaced with a nice image)
-    love.graphics.setColor(0.1, 0.2, 0.3)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    -- Load and draw background image
+    if not UI.backgroundImage then
+        UI.backgroundImage = love.graphics.newImage("data/background.png")
+    end
+    
+    -- Draw the background image scaled to fill the screen
+    love.graphics.setColor(1, 1, 1, 1)
+    local screenWidth = love.graphics.getWidth()
+    local screenHeight = love.graphics.getHeight()
+    local imgWidth = UI.backgroundImage:getWidth()
+    local imgHeight = UI.backgroundImage:getHeight()
+    
+    -- Calculate scale to ensure image covers the entire screen
+    local scaleX = screenWidth / imgWidth
+    local scaleY = screenHeight / imgHeight
+    local scale = math.max(scaleX, scaleY)
+    
+    -- Calculate centered position
+    local scaledWidth = imgWidth * scale
+    local scaledHeight = imgHeight * scale
+    local x = (screenWidth - scaledWidth) / 2
+    local y = (screenHeight - scaledHeight) / 2
+    
+    love.graphics.draw(UI.backgroundImage, x, y, 0, scale, scale)
     
     -- Draw title
     love.graphics.setColor(1, 1, 1)
@@ -1810,7 +1834,7 @@ function UI.drawMainMenu()
     
     -- Draw version information at the bottom of the screen
     local Version = require("version")
-    love.graphics.setColor(0.7, 0.7, 0.7, 0.7)
+    love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.setFont(UI.smallFont)
     local versionString = Version.getFullVersionString()
     love.graphics.print(versionString, 10, love.graphics.getHeight() - 20)

@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added transparent overlay showing building radius when hovering over villages
 - Visual feedback helps players understand building placement constraints
 - Improved building queue system to pre-plan building positions
+- Added background image to the main menu for a more polished look
 
 ## [0.1.1] - 2025-06-22
 

@@ -235,8 +235,8 @@ function UI.handleClick(game, x, y)
     
     -- Build menu interactions
     if UI.showBuildMenu then
-        local menuWidth = 300
-        local menuHeight = 350 -- Increased height for village button
+        local menuWidth = 450  -- Match the width used in drawBuildMenu
+        local menuHeight = 350
         local menuX = (love.graphics.getWidth() - menuWidth) / 2
         local menuY = (love.graphics.getHeight() - menuHeight) / 2
         
@@ -279,7 +279,7 @@ function UI.handleClick(game, x, y)
             -- Check building entries
             for buildingType, info in pairs(Config.BUILDING_TYPES) do
                 -- Check for + button click
-                if x >= menuX + 250 and x <= menuX + 270 and
+                if x >= menuX + 400 and x <= menuX + 420 and
                    y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 then
                     -- Add to building queue
                     UI.buildingQueues[game.selectedVillage.id][buildingType] = 
@@ -288,7 +288,7 @@ function UI.handleClick(game, x, y)
                 end
                 
                 -- Check for - button click
-                if x >= menuX + 280 and x <= menuX + 300 and
+                if x >= menuX + 420 and x <= menuX + 440 and
                    y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 and
                    (UI.buildingQueues[game.selectedVillage.id][buildingType] or 0) > 0 then
                     -- Decrease from building queue
@@ -511,8 +511,8 @@ end
 
 -- Draw the build menu
 function UI.drawBuildMenu(game)
-    local menuWidth = 300
-    local menuHeight = 350 -- Increased height for village button
+    local menuWidth = 450  -- Increased from 300 to 450
+    local menuHeight = 350
     local x = (love.graphics.getWidth() - menuWidth) / 2
     local y = (love.graphics.getHeight() - menuHeight) / 2
     
@@ -549,38 +549,42 @@ function UI.drawBuildMenu(game)
             love.graphics.setColor(0.6, 0.6, 0.6)
         end
         
+        -- Draw building name (at x + 20)
         love.graphics.print(buildingType:gsub("^%l", string.upper), x + 20, y + yOffset)
+        
+        -- Draw resource costs (at x + 150)
         love.graphics.print("Wood: " .. (info.cost.wood or 0) .. ", Stone: " .. (info.cost.stone or 0), x + 150, y + yOffset)
         
-        -- Add small description of the building
-        love.graphics.setFont(UI.smallFont)
-        love.graphics.print(info.description, x + 20, y + yOffset + 18)
-        love.graphics.setFont(UI.font)
-        
-        -- Draw queue controls if a village is selected
+        -- Draw queue controls if a village is selected (moved to x + 320)
         if game.selectedVillage then
             local queueCount = UI.buildingQueues[game.selectedVillage.id][buildingType] or 0
             
             -- Draw queue count
             love.graphics.setColor(1, 1, 1)
-            love.graphics.print("Queue: " .. queueCount, x + 250, y + yOffset - 15)
+            love.graphics.print("Queue: " .. queueCount, x + 320, y + yOffset)
             
-            -- Draw + button
+            -- Draw + button (moved to x + 400)
             love.graphics.setColor(0.3, 0.7, 0.3)
-            love.graphics.rectangle("fill", x + 250, y + yOffset - 5, 20, 20)
+            love.graphics.rectangle("fill", x + 400, y + yOffset - 5, 20, 20)
             love.graphics.setColor(0, 0, 0)
-            love.graphics.print("+", x + 257, y + yOffset - 3)
+            love.graphics.print("+", x + 407, y + yOffset - 3)
             
-            -- Draw - button
+            -- Draw - button (moved to x + 420)
             if queueCount > 0 then
                 love.graphics.setColor(0.7, 0.3, 0.3)
             else
-                love.graphics.setColor(0.5, 0.5, 0.5) -- Grey out if zero
+                love.graphics.setColor(0.5, 0.5, 0.5)
             end
-            love.graphics.rectangle("fill", x + 280, y + yOffset - 5, 20, 20)
+            love.graphics.rectangle("fill", x + 420, y + yOffset - 5, 20, 20)
             love.graphics.setColor(0, 0, 0)
-            love.graphics.print("-", x + 287, y + yOffset - 3)
+            love.graphics.print("-", x + 427, y + yOffset - 3)
         end
+        
+        -- Add small description of the building
+        love.graphics.setFont(UI.smallFont)
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.print(info.description, x + 20, y + yOffset + 18)
+        love.graphics.setFont(UI.font)
         
         yOffset = yOffset + 40
     end

@@ -1,4 +1,5 @@
 local Config = require("config")
+local Utils = require("utils")
 
 local UI = {}
 
@@ -14,6 +15,11 @@ function UI.init()
     UI.selectedBuilding = nil
     UI.showBuildMenu = false
     UI.tooltip = nil
+    UI.showRoadInfo = false
+    UI.roadCreationMode = false
+    UI.roadStartVillage = nil
+    UI.roadStartX = nil
+    UI.roadStartY = nil
 end
 
 -- Update UI state
@@ -95,7 +101,93 @@ function UI.update(game, dt)
                 "Housing needed: " .. (village.needsHousing and "Yes" or "No")
             }
         }
+        
+        -- Add road building instruction
+        if UI.roadCreationMode and not UI.roadStartVillage then
+            table.insert(UI.tooltip.lines, "Click to start road from this village")
+        elseif UI.roadCreationMode and UI.roadStartVillage and UI.roadStartVillage.id ~= village.id then
+            table.insert(UI.tooltip.lines, "Click to connect road to this village")
+        end
     end
+    
+    -- Road creation mode positioning
+    if UI.roadCreationMode and UI.roadStartVillage then
+        -- Show road preview from start to mouse cursor
+        UI.showRoadInfo = true
+    else
+        UI.showRoadInfo = false
+    end
+end
+
+-- Handle UI clicks
+function UI.handleClick(game, x, y)
+    -- Check for road creation mode
+    if UI.roadCreationMode then
+        -- If we're selecting a start village
+        if UI.hoveredVillage and not UI.roadStartVillage then
+            UI.roadStartVillage = UI.hoveredVillage
+            UI.roadStartX = UI.hoveredVillage.x
+            UI.roadStartY = UI.hoveredVillage.y
+            return true
+        -- If we're selecting an end village
+        elseif UI.hoveredVillage and UI.roadStartVillage and UI.hoveredVillage.id ~= UI.roadStartVillage.id then
+            -- Create the road between villages
+            local newRoad = require("entities/road").new(
+                UI.roadStartX, UI.roadStartY,
+                UI.hoveredVillage.x, UI.hoveredVillage.y,
+                UI.roadStartVillage.id,
+                UI.hoveredVillage.id,
+                0 -- 0% progress
+            )
+            
+            table.insert(game.roads, newRoad)
+            
+            -- Reset road creation mode
+            UI.roadCreationMode = false
+            UI.roadStartVillage = nil
+            UI.roadStartX = nil
+            UI.roadStartY = nil
+            return true
+        -- If we're clicking anywhere else with a start village set, cancel
+        elseif UI.roadStartVillage then
+            UI.roadCreationMode = false
+            UI.roadStartVillage = nil
+            UI.roadStartX = nil
+            UI.roadStartY = nil
+            return true
+        end
+    end
+    
+    -- Build menu interactions
+    if UI.showBuildMenu then
+        local menuWidth = 300
+        local menuHeight = 300
+        local menuX = (love.graphics.getWidth() - menuWidth) / 2
+        local menuY = (love.graphics.getHeight() - menuHeight) / 2
+        
+        -- Check if we're clicking close button
+        if x >= menuX + menuWidth - 30 and x <= menuX + menuWidth - 10 and
+           y >= menuY + 10 and y <= menuY + 30 then
+            UI.showBuildMenu = false
+            return true
+        end
+        
+        -- Check if we're clicking the "Build Road" button
+        if x >= menuX + 20 and x <= menuX + 120 and
+           y >= menuY + menuHeight - 40 and y <= menuY + menuHeight - 10 then
+            UI.roadCreationMode = true
+            UI.showBuildMenu = false
+            return true
+        end
+        
+        -- If we're clicking anywhere in the menu, capture the click
+        if x >= menuX and x <= menuX + menuWidth and 
+           y >= menuY and y <= menuY + menuHeight then
+            return true
+        end
+    end
+    
+    return false
 end
 
 -- Draw the game UI
@@ -107,10 +199,10 @@ function UI.draw(game)
     -- Draw resources
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(UI.font)
-    love.graphics.print("Money: $" .. game.money, 10, 10)
-    love.graphics.print("Wood: " .. game.resources.wood, 150, 10)
-    love.graphics.print("Stone: " .. game.resources.stone, 250, 10)
-    love.graphics.print("Food: " .. game.resources.food, 350, 10)
+    love.graphics.print("Money: $" .. math.floor(game.money), 10, 10)
+    love.graphics.print("Wood: " .. math.floor(game.resources.wood), 150, 10)
+    love.graphics.print("Stone: " .. math.floor(game.resources.stone), 250, 10)
+    love.graphics.print("Food: " .. math.floor(game.resources.food), 350, 10)
     love.graphics.print("Builders: " .. #game.builders, 450, 10)
     love.graphics.print("Villages: " .. #game.villages, 550, 10)
     love.graphics.print("Villagers: " .. #game.villagers, 650, 10)
@@ -125,10 +217,37 @@ function UI.draw(game)
         UI.drawBuildMenu(game)
     end
     
+    -- Draw road creation preview
+    if UI.showRoadInfo then
+        -- Draw a preview line from start to mouse cursor
+        local worldX, worldY = game.camera:screenToWorld(love.mouse.getX(), love.mouse.getY())
+        
+        love.graphics.setLineWidth(3)
+        love.graphics.setColor(0.8, 0.8, 0.2, 0.5)
+        love.graphics.line(UI.roadStartX, UI.roadStartY, worldX, worldY)
+        love.graphics.setLineWidth(1)
+        
+        -- Draw text instructions
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.setFont(UI.font)
+        love.graphics.print("Building Road - Click on another village to connect or ESC to cancel", 
+            love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
+    end
+    
+    -- Draw road creation mode indicator
+    if UI.roadCreationMode then
+        love.graphics.setColor(0.8, 0.8, 0.2)
+        love.graphics.setFont(UI.font)
+        if not UI.roadStartVillage then
+            love.graphics.print("Road Building Mode - Select starting village", 
+                10, love.graphics.getHeight() - 40)
+        end
+    end
+    
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom. Press B for build menu.", 10, love.graphics.getHeight() - 20)
+    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom. Press B for build menu. Press R for auto-roads.", 10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
     if #game.villages > 0 then
@@ -260,6 +379,12 @@ function UI.drawBuildMenu(game)
         
         yOffset = yOffset + 40
     end
+    
+    -- Draw road building option
+    love.graphics.setColor(0.8, 0.8, 0.2)
+    love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30)
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.print("Build Road", x + 30, y + menuHeight - 35)
     
     -- Draw close button
     love.graphics.setColor(1, 0.3, 0.3)

@@ -12,10 +12,15 @@ function Villager.new(x, y, villageId, homeBuilding)
         villageId = villageId,
         homeBuilding = homeBuilding,
         workplace = nil,
-        state = "seeking_work", -- seeking_work, going_to_work, working, going_home
+        state = "seeking_work", -- seeking_work, going_to_work, working, returning_home, transporting
         targetX = nil,
         targetY = nil,
-        workTimer = 0
+        workTimer = 0,
+        
+        -- Resource transport
+        carriedResource = nil,
+        resourceAmount = 0,
+        homeVillage = nil
     }, Villager)
     
     return villager
@@ -23,12 +28,24 @@ end
 
 function Villager.update(villagers, game, dt)
     for i, villager in ipairs(villagers) do
+        -- If villager doesn't have home village reference, try to find it
+        if not villager.homeVillage then
+            for _, village in ipairs(game.villages) do
+                if village.id == villager.villageId then
+                    villager.homeVillage = village
+                    break
+                end
+            end
+        end
+        
+        -- Update based on current state
         if villager.state == "seeking_work" then
             -- Find a workplace that needs workers
             villager:findWork(game)
         elseif villager.state == "going_to_work" then
             -- Move toward workplace
-            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, Config.VILLAGER_SPEED, dt)
+            local speed = villager:getMovementSpeed(game)
+            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, speed, dt)
             
             if arrived then
                 villager.state = "working"
@@ -38,15 +55,84 @@ function Villager.update(villagers, game, dt)
             -- Working at workplace
             villager.workTimer = villager.workTimer + dt
             
-            -- Occasionally go home to rest
-            if villager.workTimer > 30 and math.random() < 0.01 then
-                villager.state = "going_home"
-                villager.targetX = villager.homeBuilding.x
-                villager.targetY = villager.homeBuilding.y
+            -- After working for extraction time, transport resources back to village
+            if villager.workTimer >= Config.RESOURCE_EXTRACT_TIME then
+                -- Determine which resource to carry based on workplace
+                local workplace = villager.workplace
+                if workplace and workplace.type ~= "house" then
+                    local buildingInfo = Config.BUILDING_TYPES[workplace.type]
+                    if buildingInfo and buildingInfo.resource then
+                        villager.carriedResource = buildingInfo.resource
+                        
+                        -- Determine resource amount based on whether there's a road connection
+                        local villageX = villager.homeVillage and villager.homeVillage.x or 0
+                        local villageY = villager.homeVillage and villager.homeVillage.y or 0
+                        local hasRoadConnection = require("entities/road").areConnected(
+                            game.roads, 
+                            workplace.x, workplace.y,
+                            villageX, villageY
+                        )
+                        
+                        -- More efficient with roads
+                        if hasRoadConnection then
+                            villager.resourceAmount = math.ceil(Config.RESOURCE_CARRY_CAPACITY * Config.RESOURCE_BONUS_WITH_ROAD)
+                        else
+                            villager.resourceAmount = Config.RESOURCE_CARRY_CAPACITY
+                        end
+                        
+                        -- Set target to home village for resource transport
+                        if villager.homeVillage then
+                            villager.targetX = villager.homeVillage.x
+                            villager.targetY = villager.homeVillage.y
+                            villager.state = "transporting"
+                        else
+                            -- Reset if no valid village
+                            villager.state = "seeking_work"
+                        end
+                    end
+                else
+                    -- Reset for non-resource workplaces
+                    villager.workTimer = 0
+                    villager.state = "seeking_work"
+                end
             end
-        elseif villager.state == "going_home" then
+        elseif villager.state == "transporting" then
+            -- Moving to village with resources
+            local speed = villager:getMovementSpeed(game)
+            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, speed, dt)
+            
+            if arrived and villager.carriedResource and villager.resourceAmount > 0 then
+                -- Deliver resources to village 
+                if game.resources[villager.carriedResource] then
+                    game.resources[villager.carriedResource] = game.resources[villager.carriedResource] + villager.resourceAmount
+                    
+                    -- Also generate some money based on resource type
+                    local resourceValue = 0
+                    if villager.carriedResource == "food" then resourceValue = 1
+                    elseif villager.carriedResource == "wood" then resourceValue = 2
+                    elseif villager.carriedResource == "stone" then resourceValue = 3
+                    end
+                    
+                    game.money = game.money + resourceValue
+                end
+                
+                -- Reset carried resources
+                villager.carriedResource = nil
+                villager.resourceAmount = 0
+                
+                -- Return to workplace
+                if villager.workplace then
+                    villager.targetX = villager.workplace.x
+                    villager.targetY = villager.workplace.y
+                    villager.state = "going_to_work"
+                else
+                    villager.state = "seeking_work"
+                end
+            end
+        elseif villager.state == "returning_home" then
             -- Move toward home
-            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, Config.VILLAGER_SPEED, dt)
+            local speed = villager:getMovementSpeed(game)
+            local arrived = Utils.moveToward(villager, villager.targetX, villager.targetY, speed, dt)
             
             if arrived then
                 -- Rest for a bit then go back to work
@@ -107,9 +193,45 @@ function Villager:findWork(game)
     end
 end
 
+-- Check if villager is on a road
+function Villager:isOnRoad(game)
+    local nearestRoad, distance = require("entities/road").findNearestRoad(game.roads, self.x, self.y, 10)
+    return nearestRoad ~= nil
+end
+
+-- Get movement speed for the villager (faster on roads)
+function Villager:getMovementSpeed(game)
+    if self:isOnRoad(game) then
+        return Config.VILLAGER_SPEED * Config.ROAD_SPEED_MULTIPLIER
+    else
+        return Config.VILLAGER_SPEED
+    end
+end
+
 function Villager:draw()
+    -- Base color for villager
     love.graphics.setColor(0.2, 0.6, 0.9)
-    love.graphics.circle("fill", self.x, self.y, 4)
+    
+    -- Draw carried resources if transporting
+    if self.state == "transporting" and self.carriedResource then
+        -- Draw villager with resource
+        love.graphics.circle("fill", self.x, self.y, 4)
+        
+        -- Draw resource indicator
+        if self.carriedResource == "food" then
+            love.graphics.setColor(0.2, 0.8, 0.2)
+        elseif self.carriedResource == "wood" then
+            love.graphics.setColor(0.6, 0.4, 0.2)
+        elseif self.carriedResource == "stone" then
+            love.graphics.setColor(0.6, 0.6, 0.6)
+        end
+        
+        love.graphics.circle("fill", self.x, self.y - 6, 2)
+        love.graphics.print(self.resourceAmount, self.x + 5, self.y - 8)
+    else
+        -- Regular villager
+        love.graphics.circle("fill", self.x, self.y, 4)
+    end
     
     -- Draw line to target if moving
     if self.targetX and self.targetY then
@@ -122,7 +244,8 @@ function Villager:draw()
         seeking_work = {1, 0, 0},
         going_to_work = {1, 0.5, 0},
         working = {0, 1, 0},
-        going_home = {0, 0, 1}
+        returning_home = {0, 0, 1},
+        transporting = {1, 1, 0}
     }
     
     if stateColors[self.state] then

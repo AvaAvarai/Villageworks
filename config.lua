@@ -64,7 +64,18 @@ local Config = {
     
     -- Resource initial values
     STARTING_MONEY = 100,
-    STARTING_RESOURCES = { wood = 50, stone = 30, food = 40 }
+    STARTING_RESOURCES = { wood = 50, stone = 30, food = 40 },
+    
+    -- Road settings
+    ROAD_COST_PER_UNIT = { wood = 0.05, stone = 0.02 },
+    ROAD_BUILD_SPEED = 50,          -- How fast builders construct roads (units per second)
+    ROAD_SPEED_MULTIPLIER = 1.5,    -- Movement speed multiplier when on roads
+    ROAD_BUILD_PRIORITY = 0.3,      -- Chance a builder will prioritize road building
+    
+    -- Resource transport
+    RESOURCE_CARRY_CAPACITY = 5,    -- How many resources a villager can carry
+    RESOURCE_EXTRACT_TIME = 5,      -- Time to extract resources at a resource building
+    RESOURCE_BONUS_WITH_ROAD = 1.5  -- Multiplier for resource extraction when connected by roads
 }
 
 return Config 

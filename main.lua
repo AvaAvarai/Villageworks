@@ -267,13 +267,4 @@ function love.keypressed(key)
                                  game.selectedVillage.y - love.graphics.getHeight() / 2)
         end
     end
-    
-    -- V key to toggle village building mode
-    if key == "v" then
-        if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
-            game.uiMode = Config.UI_MODE_NORMAL
-        else
-            game.uiMode = Config.UI_MODE_BUILDING_VILLAGE
-        end
-    end
 end

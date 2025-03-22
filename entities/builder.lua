@@ -93,46 +93,27 @@ function Builder:findTask(game)
     end
     
     if not village then return end
+
+    -- Get the UI module to access building queues
+    local UI = require("ui")
     
-    -- Check if we can afford to build a house (highest priority for population growth)
-    if Utils.canAfford(game.resources, Config.BUILDING_TYPES.house.cost) then
-        -- Houses are always a top priority for population growth
-        local shouldBuildHouse = false
+    -- First check if there are any queued buildings for this village
+    if UI.hasQueuedBuildings(village.id) then
+        local nextBuildingType = UI.getNextQueuedBuilding(village.id)
         
-        -- Always build a house if village needs housing
-        if village.needsHousing then
-            shouldBuildHouse = true
-        -- Even if not explicitly needed, build houses for future population growth
-        -- with decreasing probability as we have more houses
-        else
-            -- Count existing houses for this village
-            local houseCount = 0
-            for _, building in ipairs(game.buildings) do
-                if building.villageId == village.id and building.type == "house" then
-                    houseCount = houseCount + 1
-                end
-            end
-            
-            -- Higher chance to build houses when we have fewer of them
-            local houseChance = 0.8 - (houseCount * 0.05)
-            if houseChance > 0 and math.random() < houseChance then
-                shouldBuildHouse = true
-            end
-        end
-        
-        if shouldBuildHouse then
-            -- Find a good location for the house
+        if nextBuildingType and Utils.canAfford(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost) then
+            -- Find a good location for the building
             local buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE)
             
             -- Create the task
             self.task = {
                 x = buildX,
                 y = buildY,
-                type = "house"
+                type = nextBuildingType
             }
             
             -- Deduct resources
-            Utils.deductResources(game.resources, Config.BUILDING_TYPES.house.cost)
+            Utils.deductResources(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost)
             
             -- Set target location and state
             self.targetX = buildX
@@ -140,11 +121,14 @@ function Builder:findTask(game)
             self.state = "moving"
             self.progress = 0
             
+            -- Decrement the building from the queue
+            UI.decrementBuildingQueue(village.id, nextBuildingType)
+            
             return -- Task found, exit the function
         end
     end
     
-    -- Second priority: Check if village has road needs
+    -- If no queued buildings, check for road needs
     if #village.needsRoads > 0 and game.resources.wood >= 10 and game.resources.stone >= 5 then
         -- Take the highest priority road need
         local roadNeed = village.needsRoads[1]
@@ -187,8 +171,8 @@ function Builder:findTask(game)
         end
     end
     
-    -- Third priority: Check if there are any unfinished roads that need building
-    if math.random() < Config.ROAD_BUILD_PRIORITY and #game.roads > 0 then
+    -- Check if there are any unfinished roads that need building
+    if #game.roads > 0 then
         -- Look for incomplete roads
         local nearestRoad = nil
         local minDistance = math.huge
@@ -212,56 +196,6 @@ function Builder:findTask(game)
             self.currentRoad = nearestRoad
             self.state = "building_road"
             return
-        end
-    end
-    
-    -- Final priority: Build resource structures based on village needs
-    if math.random() < Config.BUILDER_BUILD_CHANCE then
-        -- Priority 1: Resources needed by village
-        local buildingType = nil
-        
-        local possibleBuildings = {}
-        for _, buildingName in ipairs(village.needsResources) do
-            if Utils.canAfford(game.resources, Config.BUILDING_TYPES[buildingName].cost) then
-                table.insert(possibleBuildings, buildingName)
-            end
-        end
-        
-        if #possibleBuildings > 0 then
-            buildingType = possibleBuildings[math.random(#possibleBuildings)]
-        else
-            -- Priority 2: Any affordable building (that's not a house, as we already checked for that)
-            local affordableBuildings = {}
-            for type, info in pairs(Config.BUILDING_TYPES) do
-                if type ~= "house" and Utils.canAfford(game.resources, info.cost) then
-                    table.insert(affordableBuildings, type)
-                end
-            end
-            
-            if #affordableBuildings > 0 then
-                buildingType = affordableBuildings[math.random(#affordableBuildings)]
-            end
-        end
-        
-        if buildingType then
-            -- Find a location to build
-            local buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE)
-            
-            -- Create the task
-            self.task = {
-                x = buildX,
-                y = buildY,
-                type = buildingType
-            }
-            
-            -- Deduct resources
-            Utils.deductResources(game.resources, Config.BUILDING_TYPES[buildingType].cost)
-            
-            -- Set target location and state
-            self.targetX = buildX
-            self.targetY = buildY
-            self.state = "moving"
-            self.progress = 0
         end
     end
 end

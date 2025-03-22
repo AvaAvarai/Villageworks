@@ -25,6 +25,9 @@ function UI.init()
     UI.message = nil
     UI.messageTimer = 0
     UI.MESSAGE_DURATION = 3 -- seconds to show messages
+    
+    -- Building queue system
+    UI.buildingQueues = {} -- Store building queues per village
 end
 
 -- Update UI state
@@ -261,6 +264,43 @@ function UI.handleClick(game, x, y)
             return true
         end
         
+        -- Check if we're clicking on building queue buttons
+        if game.selectedVillage then
+            local yOffset = 60
+            
+            -- Initialize building queue for this village if it doesn't exist
+            if not UI.buildingQueues[game.selectedVillage.id] then
+                UI.buildingQueues[game.selectedVillage.id] = {}
+                for buildingType, _ in pairs(Config.BUILDING_TYPES) do
+                    UI.buildingQueues[game.selectedVillage.id][buildingType] = 0
+                end
+            end
+            
+            -- Check building entries
+            for buildingType, info in pairs(Config.BUILDING_TYPES) do
+                -- Check for + button click
+                if x >= menuX + 250 and x <= menuX + 270 and
+                   y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 then
+                    -- Add to building queue
+                    UI.buildingQueues[game.selectedVillage.id][buildingType] = 
+                        (UI.buildingQueues[game.selectedVillage.id][buildingType] or 0) + 1
+                    return true
+                end
+                
+                -- Check for - button click
+                if x >= menuX + 280 and x <= menuX + 300 and
+                   y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 and
+                   (UI.buildingQueues[game.selectedVillage.id][buildingType] or 0) > 0 then
+                    -- Decrease from building queue
+                    UI.buildingQueues[game.selectedVillage.id][buildingType] = 
+                        UI.buildingQueues[game.selectedVillage.id][buildingType] - 1
+                    return true
+                end
+                
+                yOffset = yOffset + 40
+            end
+        end
+        
         -- If we're clicking anywhere in the menu, capture the click
         if x >= menuX and x <= menuX + menuWidth and 
            y >= menuY and y <= menuY + menuHeight then
@@ -271,14 +311,17 @@ function UI.handleClick(game, x, y)
     -- Top bar buttons
     local topBarHeight = 40
     if y < topBarHeight then
-        -- Check for build village button in top bar
-        local buildVillageButtonX = love.graphics.getWidth() - 120
-        if x >= buildVillageButtonX and x <= buildVillageButtonX + 100 and y <= topBarHeight then
-            game.uiMode = Config.UI_MODE_BUILDING_VILLAGE
-            return true
-        end
-        
         return false -- Let other clicks in the top bar through
+    end
+    
+    -- Check if clicking on a village (when not in build menu already)
+    if not UI.showBuildMenu and UI.hoveredVillage then
+        -- Select this village
+        game.selectedVillage = UI.hoveredVillage
+        
+        -- Open build menu for this village
+        UI.showBuildMenu = true
+        return true
     end
     
     return false
@@ -299,23 +342,6 @@ function UI.draw(game)
     love.graphics.print("Food: " .. math.floor(game.resources.food), 350, 10)
     love.graphics.print("Builders: " .. #game.builders, 450, 10)
     love.graphics.print("Villages: " .. #game.villages, 550, 10)
-    
-    -- Draw build village button in top bar
-    local buildVillageButtonX = love.graphics.getWidth() - 120
-    
-    -- Change button appearance based on game mode
-    if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
-        love.graphics.setColor(0.8, 1, 0.8) -- Highlighted when active
-    else
-        love.graphics.setColor(0.6, 0.8, 0.6)
-    end
-    
-    -- Draw button
-    love.graphics.rectangle("fill", buildVillageButtonX, 5, 100, 30)
-    
-    -- Draw button text
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, buildVillageButtonX + 10, 12)
     
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)
@@ -386,7 +412,7 @@ function UI.draw(game)
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Press B for build menu. Press V for village building. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom.", 
+    love.graphics.print("Press B for build menu. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom.", 
                         10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
@@ -505,6 +531,14 @@ function UI.drawBuildMenu(game)
     love.graphics.setFont(UI.font)
     local yOffset = 60
     
+    -- Initialize building queue for selected village if needed
+    if game.selectedVillage and not UI.buildingQueues[game.selectedVillage.id] then
+        UI.buildingQueues[game.selectedVillage.id] = {}
+        for buildingType, _ in pairs(Config.BUILDING_TYPES) do
+            UI.buildingQueues[game.selectedVillage.id][buildingType] = 0
+        end
+    end
+    
     for buildingType, info in pairs(Config.BUILDING_TYPES) do
         local canAfford = game.resources.wood >= (info.cost.wood or 0) and 
                           game.resources.stone >= (info.cost.stone or 0)
@@ -522,6 +556,31 @@ function UI.drawBuildMenu(game)
         love.graphics.setFont(UI.smallFont)
         love.graphics.print(info.description, x + 20, y + yOffset + 18)
         love.graphics.setFont(UI.font)
+        
+        -- Draw queue controls if a village is selected
+        if game.selectedVillage then
+            local queueCount = UI.buildingQueues[game.selectedVillage.id][buildingType] or 0
+            
+            -- Draw queue count
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.print("Queue: " .. queueCount, x + 250, y + yOffset - 15)
+            
+            -- Draw + button
+            love.graphics.setColor(0.3, 0.7, 0.3)
+            love.graphics.rectangle("fill", x + 250, y + yOffset - 5, 20, 20)
+            love.graphics.setColor(0, 0, 0)
+            love.graphics.print("+", x + 257, y + yOffset - 3)
+            
+            -- Draw - button
+            if queueCount > 0 then
+                love.graphics.setColor(0.7, 0.3, 0.3)
+            else
+                love.graphics.setColor(0.5, 0.5, 0.5) -- Grey out if zero
+            end
+            love.graphics.rectangle("fill", x + 280, y + yOffset - 5, 20, 20)
+            love.graphics.setColor(0, 0, 0)
+            love.graphics.print("-", x + 287, y + yOffset - 3)
+        end
         
         yOffset = yOffset + 40
     end
@@ -548,6 +607,49 @@ function UI.drawBuildMenu(game)
     love.graphics.rectangle("fill", x + menuWidth - 30, y + 10, 20, 20)
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("X", x + menuWidth - 24, y + 10)
+end
+
+-- Initialize or get the building queue for a village
+function UI.getVillageBuildingQueue(villageId)
+    if not UI.buildingQueues[villageId] then
+        UI.buildingQueues[villageId] = {}
+        for buildingType, _ in pairs(Config.BUILDING_TYPES) do
+            UI.buildingQueues[villageId][buildingType] = 0
+        end
+    end
+    return UI.buildingQueues[villageId]
+end
+
+-- Check if there are any buildings in the village's queue
+function UI.hasQueuedBuildings(villageId)
+    local queue = UI.getVillageBuildingQueue(villageId)
+    for buildingType, count in pairs(queue) do
+        if count > 0 then
+            return true
+        end
+    end
+    return false
+end
+
+-- Get the next building from the queue
+function UI.getNextQueuedBuilding(villageId)
+    local queue = UI.getVillageBuildingQueue(villageId)
+    for buildingType, count in pairs(queue) do
+        if count > 0 then
+            return buildingType
+        end
+    end
+    return nil
+end
+
+-- Decrement a building from the queue
+function UI.decrementBuildingQueue(villageId, buildingType)
+    local queue = UI.getVillageBuildingQueue(villageId)
+    if queue[buildingType] and queue[buildingType] > 0 then
+        queue[buildingType] = queue[buildingType] - 1
+        return true
+    end
+    return false
 end
 
 return UI 

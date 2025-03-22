@@ -131,19 +131,55 @@ function Builder:findTask(game)
             -- Find a good location for the building that's not on water
             local buildX, buildY
             local attempt = 0
-            local maxAttempts = 20
+            local maxAttempts = 30 -- Increased attempts for finding special locations
             
             repeat
                 buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE, game.map)
                 attempt = attempt + 1
-            until (game.map:canBuildAt(buildX, buildY) or attempt >= maxAttempts)
+                
+                -- Check if the position is valid (not on water, not overlapping other buildings)
+                local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
+                                        game.map:isPositionClearOfBuildings(buildX, buildY, game)
+                
+                -- Special check for fishing huts - must be adjacent to water
+                if nextBuildingType == "fishing_hut" then
+                    if not (isValidPosition and game.map:isAdjacentToWater(buildX, buildY)) then
+                        -- Location not suitable for fishing hut
+                        buildX = nil
+                    end
+                else
+                    -- For normal buildings, just check standard requirements
+                    if not isValidPosition then
+                        -- Location not suitable
+                        buildX = nil
+                    end
+                end
+            until (buildX ~= nil or attempt >= maxAttempts)
             
-            -- If we couldn't find a buildable spot after max attempts, find closest buildable area
-            if not game.map:canBuildAt(buildX, buildY) then
-                buildX, buildY = game.map:findNearestBuildablePosition(buildX, buildY)
+            -- If we couldn't find a suitable spot after max attempts
+            if buildX == nil then
+                if nextBuildingType == "fishing_hut" then
+                    -- For fishing huts, find a spot adjacent to water that doesn't overlap
+                    buildX, buildY = self:findNonOverlappingWaterEdge(game, village.x, village.y)
+                else
+                    -- For regular buildings, find any suitable spot
+                    buildX, buildY = self:findNonOverlappingBuildPosition(game, village.x, village.y)
+                end
                 
                 -- If still no valid position, give up on this task
-                if not buildX then return end
+                if not buildX then 
+                    -- Return resources since we can't build
+                    Utils.addResources(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost)
+                    -- Remove from queue
+                    UI.decrementBuildingQueue(village.id, nextBuildingType)
+                    -- Show message about failure
+                    if nextBuildingType == "fishing_hut" then
+                        UI.showMessage("Cannot build fishing hut: No suitable water-adjacent locations found")
+                    else
+                        UI.showMessage("Cannot build " .. nextBuildingType .. ": No suitable location found")
+                    end
+                    return 
+                end
             end
             
             -- Create the task
@@ -328,6 +364,116 @@ function Builder:getMovementSpeed(game)
     else
         return Config.BUILDER_SPEED
     end
+end
+
+-- Find a non-overlapping position near the edge of water
+function Builder:findNonOverlappingWaterEdge(game, startX, startY)
+    -- Define search parameters
+    local maxSearchRadius = 300
+    local searchStep = 15
+    local maxPositionsToCheck = 30
+    
+    -- Keep track of positions we've checked
+    local checkedPositions = 0
+    
+    -- Search in expanding circles
+    for radius = searchStep, maxSearchRadius, searchStep do
+        -- Search along the perimeter of the circle
+        for angle = 0, 2*math.pi, math.pi/12 do
+            if checkedPositions >= maxPositionsToCheck then
+                break -- Limit the number of positions we check
+            end
+            
+            local x = startX + radius * math.cos(angle)
+            local y = startY + radius * math.sin(angle)
+            
+            -- Check if this location is suitable for a fishing hut
+            if game.map:canBuildAt(x, y) and 
+               game.map:isAdjacentToWater(x, y) and
+               game.map:isPositionClearOfBuildings(x, y, game) then
+                return x, y
+            end
+            
+            checkedPositions = checkedPositions + 1
+        end
+    end
+    
+    -- If we couldn't find a good spot, try using the map's function as a fallback
+    -- But then verify with additional checks
+    local x, y = game.map:findNearestWaterEdge(startX, startY)
+    
+    if x and y then
+        -- Try different positions around the suggested point to find a non-overlapping position
+        for dx = -40, 40, 20 do
+            for dy = -40, 40, 20 do
+                local checkX = x + dx
+                local checkY = y + dy
+                
+                if game.map:canBuildAt(checkX, checkY) and 
+                   game.map:isAdjacentToWater(checkX, checkY) and
+                   game.map:isPositionClearOfBuildings(checkX, checkY, game) then
+                    return checkX, checkY
+                end
+            end
+        end
+    end
+    
+    -- If all else fails, return nil
+    return nil, nil
+end
+
+-- Find a non-overlapping position for a regular building
+function Builder:findNonOverlappingBuildPosition(game, startX, startY)
+    -- Define search parameters
+    local maxSearchRadius = 200
+    local searchStep = 15
+    local maxPositionsToCheck = 30
+    
+    -- Keep track of positions we've checked
+    local checkedPositions = 0
+    
+    -- Search in expanding circles
+    for radius = searchStep, maxSearchRadius, searchStep do
+        -- Search along the perimeter of the circle
+        for angle = 0, 2*math.pi, math.pi/8 do
+            if checkedPositions >= maxPositionsToCheck then
+                break -- Limit the number of positions we check
+            end
+            
+            local x = startX + radius * math.cos(angle)
+            local y = startY + radius * math.sin(angle)
+            
+            -- Check if this location is suitable for a building
+            if game.map:canBuildAt(x, y) and 
+               game.map:isPositionClearOfBuildings(x, y, game) then
+                return x, y
+            end
+            
+            checkedPositions = checkedPositions + 1
+        end
+    end
+    
+    -- If we couldn't find a good spot, try using the map's function as a fallback
+    -- But then verify with additional checks
+    local x, y = game.map:findNearestBuildablePosition(startX, startY)
+    
+    if x and y then
+        -- Try different positions around the suggested point to find a non-overlapping position
+        for dx = -50, 50, 25 do
+            for dy = -50, 50, 25 do
+                local checkX = x + dx
+                local checkY = y + dy
+                
+                if game.map:canBuildAt(checkX, checkY) and 
+                   game.map:isPositionClearOfBuildings(checkX, checkY, game) then
+                    return checkX, checkY
+                end
+            end
+        end
+    end
+    
+    -- If all else fails, return nil
+    return nil, nil
 end
 
 return Builder 

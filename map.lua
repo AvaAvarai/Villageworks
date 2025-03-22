@@ -281,6 +281,42 @@ function Map:canBuildAt(worldX, worldY)
     return tileType ~= Map.TILE_WATER
 end
 
+-- Check if a position is adjacent to water (for fishing huts)
+function Map:isAdjacentToWater(worldX, worldY)
+    -- First check if position is within map bounds
+    if not Map:isWithinBounds(worldX, worldY) then
+        return false
+    end
+    
+    -- The position itself shouldn't be water
+    local tileType = Map:getTileTypeAtWorld(worldX, worldY)
+    if tileType == Map.TILE_WATER then
+        return false
+    end
+    
+    -- Get tile coordinates
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
+    
+    -- Check all adjacent tiles (including diagonals)
+    for dy = -1, 1 do
+        for dx = -1, 1 do
+            -- Skip the center tile (the position itself)
+            if not (dx == 0 and dy == 0) then
+                local nx, ny = tileX + dx, tileY + dy
+                
+                -- Make sure adjacent tile is within map bounds
+                if nx >= 1 and ny >= 1 and nx <= Map.width and ny <= Map.height then
+                    if Map.tiles[ny][nx] == Map.TILE_WATER then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
 -- Draw visible portion of the map
 function Map:draw(camera)
     -- Calculate visible area in tile coordinates
@@ -410,6 +446,116 @@ function Map:findNearestBuildablePosition(worldX, worldY, maxDistance)
     
     -- If no buildable position found, return nil
     return nil, nil
+end
+
+-- Find nearest position suitable for building (not water)
+function Map:findNearestBuildablePosition(startX, startY)
+    -- First check if start position is already buildable
+    if Map:canBuildAt(startX, startY) then
+        return startX, startY
+    end
+    
+    -- Define search parameters
+    local maxSearchRadius = 200 -- Maximum radius to search in
+    local searchStep = 10 -- Step size for each search increment
+    
+    -- Search in expanding circles
+    for radius = searchStep, maxSearchRadius, searchStep do
+        -- Search along the perimeter of the circle
+        for angle = 0, 2*math.pi, math.pi/8 do
+            local x = startX + radius * math.cos(angle)
+            local y = startY + radius * math.sin(angle)
+            
+            if Map:canBuildAt(x, y) then
+                return x, y
+            end
+        end
+    end
+    
+    -- If no suitable spot found, return nil
+    return nil, nil
+end
+
+-- Find nearest position adjacent to water (for fishing huts)
+function Map:findNearestWaterEdge(startX, startY)
+    -- First check if start position is already adjacent to water
+    if Map:canBuildAt(startX, startY) and Map:isAdjacentToWater(startX, startY) then
+        return startX, startY
+    end
+    
+    -- Define search parameters
+    local maxSearchRadius = 300 -- Larger search radius for water edges
+    local searchStep = 15 -- Step size for each search increment
+    
+    -- Search in expanding circles
+    for radius = searchStep, maxSearchRadius, searchStep do
+        -- Search along the perimeter of the circle
+        for angle = 0, 2*math.pi, math.pi/12 do  -- More angles for better coverage
+            local x = startX + radius * math.cos(angle)
+            local y = startY + radius * math.sin(angle)
+            
+            -- Check if this location is suitable for a fishing hut
+            if Map:canBuildAt(x, y) and Map:isAdjacentToWater(x, y) then
+                return x, y
+            end
+        end
+    end
+    
+    -- Check the map systematically if circular search failed
+    local closestX, closestY = nil, nil
+    local closestDistance = math.huge
+    
+    -- Calculate starting tile coordinates
+    local startTileX, startTileY = Map:worldToTile(startX, startY)
+    
+    -- Define search grid size
+    local searchWidth = 20
+    local searchHeight = 20
+    
+    -- Calculate search bounds
+    local minX = math.max(1, startTileX - searchWidth)
+    local maxX = math.min(Map.width, startTileX + searchWidth)
+    local minY = math.max(1, startTileY - searchHeight)
+    local maxY = math.min(Map.height, startTileY + searchHeight)
+    
+    -- Check every tile in the search area
+    for y = minY, maxY do
+        for x = minX, maxX do
+            local worldX, worldY = Map:tileToWorld(x, y)
+            
+            -- Check if this is a valid position for a fishing hut
+            if Map:canBuildAt(worldX, worldY) and Map:isAdjacentToWater(worldX, worldY) then
+                local distance = Utils.distance(startX, startY, worldX, worldY)
+                
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestX = worldX
+                    closestY = worldY
+                end
+            end
+        end
+    end
+    
+    -- Return the closest valid position, or nil if none found
+    return closestX, closestY
+end
+
+-- Check if a position for a new building would overlap with existing buildings
+function Map:isPositionClearOfBuildings(worldX, worldY, game, buildingSize)
+    buildingSize = buildingSize or Config.BUILDING_SIZE or 20 -- Default building size
+    
+    -- Check all existing buildings
+    for _, building in ipairs(game.buildings) do
+        -- Calculate distance between building centers
+        local distance = Utils.distance(worldX, worldY, building.x, building.y)
+        
+        -- If distance is less than the sum of building sizes, they overlap
+        if distance < buildingSize * 2 then
+            return false
+        end
+    end
+    
+    return true
 end
 
 return Map 

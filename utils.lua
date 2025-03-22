@@ -24,6 +24,13 @@ function Utils.deductResources(resources, cost)
     end
 end
 
+-- Add resources based on a cost table (for refunds)
+function Utils.addResources(resources, cost)
+    for resource, amount in pairs(cost) do
+        resources[resource] = (resources[resource] or 0) + amount
+    end
+end
+
 -- Get a random position within a radius of a point
 function Utils.randomPositionAround(x, y, minRadius, maxRadius, map)
     -- Try to find a position within the map boundaries

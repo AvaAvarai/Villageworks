@@ -44,7 +44,7 @@ local Config = {
             buildTime = 4,
             resource = "food",
             workCapacity = 2,
-            description = "Catches fish for food (must be near water)"
+            description = "Catches fish for food (must be built directly adjacent to water)"
         }
     },
     
@@ -53,6 +53,7 @@ local Config = {
     MAX_BUILD_DISTANCE = 150,
     WORLD_WIDTH = 3000,  -- Width of the game world in pixels
     WORLD_HEIGHT = 3000, -- Height of the game world in pixels
+    BUILDING_SIZE = 24,  -- Size of buildings for overlap detection (diameter)
     
     -- Entity behavior
     BUILDER_SPAWN_TIME = 10,

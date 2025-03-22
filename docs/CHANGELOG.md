@@ -9,14 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - Added the serpent library for Lua serialization, enabling save/load functionality
+- Enhanced fishing huts with water adjacency requirement for more realistic gameplay
+- Added resource refunding when buildings cannot be constructed
+- Added building overlap prevention for more realistic placement
 
 ### Changed
+
+- Updated camera system to start at the center of the world on map initialization
+- Made fishing huts require adjacency to water tiles for placement
+- Improved building placement logic with smarter positioning algorithms
+- Enhanced builder AI with improved positioning logic to prevent building overlaps
 
 ### Fixed
 
 - Fixed a critical issue where loading a saved game would generate a new map instead of restoring the saved map
 - Fixed save/load system to properly serialize and deserialize map data
 - Implemented proper map state persistence during game loads
+- Fixed fishing hut placement to ensure they're built only next to water tiles
+- Fixed building placement to prevent buildings from overlapping with each other
 
 ## [0.1.1] - 2025-06-22
 

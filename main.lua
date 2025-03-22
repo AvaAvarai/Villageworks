@@ -294,34 +294,9 @@ function love.mousepressed(x, y, button)
 end
 
 function love.wheelmoved(x, y)
-    -- If documentation popup is showing, handle scrolling
-    if UI.showPopup then
-        local scrollSpeed = 20
-        if y > 0 then -- Scroll up
-            UI.popupScroll = math.max(0, UI.popupScroll - scrollSpeed)
-        elseif y < 0 then -- Scroll down
-            UI.popupScroll = UI.popupScroll + scrollSpeed
-        end
-        return -- Don't process camera zoom when scrolling the popup
-    end
-    
-    -- If load dialog is showing, handle scrolling
-    if UI.showLoadDialog then
-        local scrollSpeed = 30
-        if y > 0 then -- Scroll up
-            UI.loadDialogScroll = math.max(0, UI.loadDialogScroll - scrollSpeed)
-        elseif y < 0 then -- Scroll down
-            -- Calculate the maximum scroll possible
-            local fileHeight = 40
-            local fileSpacing = 10
-            local totalHeight = #UI.saveFiles * (fileHeight + fileSpacing)
-            local dialogHeight = love.graphics.getHeight() * 0.7
-            local visibleHeight = dialogHeight - 160
-            
-            -- Apply scroll with limit
-            UI.loadDialogScroll = math.min(math.max(0, totalHeight - visibleHeight), UI.loadDialogScroll + scrollSpeed)
-        end
-        return -- Don't process camera zoom when scrolling the load dialog
+    -- Let UI module handle wheel events first
+    if UI.wheelmoved(x, y) then
+        return
     end
     
     -- Zoom camera with mouse wheel
@@ -334,30 +309,12 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(key)
+    -- Let UI handle key events first
+    UI.keypressed(game, key)
+    
     -- Check if we're in the main menu
     if UI.showMainMenu then
-        -- If documentation popup is showing, ESC should close it
-        if UI.showPopup and key == "escape" then
-            UI.showPopup = false
-            UI.popupType = nil
-            return
-        -- If load dialog is showing, ESC should close it
-        elseif UI.showLoadDialog and key == "escape" then
-            UI.showLoadDialog = false
-            return
-        end
-        
         return -- Let UI handle main menu keypresses
-    end
-    
-    -- Handle save dialog key presses
-    if UI.showSaveDialog then
-        if key == "escape" then
-            UI.showSaveDialog = false
-            UI.showPauseMenu = true
-            return
-        end
-        return
     end
     
     -- Toggle build menu
@@ -387,7 +344,7 @@ function love.keypressed(key)
     
     -- Quick save with F5
     if key == "f5" then
-        UI.saveGame(game)
+        SaveLoad.saveGame(game)
     end
     
     -- Number keys to quickly select villages by index

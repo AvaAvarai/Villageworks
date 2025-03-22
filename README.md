@@ -1,6 +1,6 @@
 # Villageworks
 
-A sophisticated civilization management simulation where you establish and nurture a network of interconnected settlements.
+Villageworks is an in-dev civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE.
 
 ## Demo Video
 

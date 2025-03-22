@@ -28,7 +28,8 @@ function Builder.update(builders, game, dt)
             builder:findTask(game)
         elseif builder.state == "moving" then
             -- Move to building site
-            local arrived = Utils.moveToward(builder, builder.targetX, builder.targetY, Config.BUILDER_SPEED, dt)
+            local speed = builder:getMovementSpeed(game)
+            local arrived = Utils.moveToward(builder, builder.targetX, builder.targetY, speed, dt)
             
             if arrived then
                 builder.state = "building"
@@ -93,7 +94,100 @@ function Builder:findTask(game)
     
     if not village then return end
     
-    -- Check if there are any roads that need building
+    -- Check if we can afford to build a house (highest priority for population growth)
+    if Utils.canAfford(game.resources, Config.BUILDING_TYPES.house.cost) then
+        -- Houses are always a top priority for population growth
+        local shouldBuildHouse = false
+        
+        -- Always build a house if village needs housing
+        if village.needsHousing then
+            shouldBuildHouse = true
+        -- Even if not explicitly needed, build houses for future population growth
+        -- with decreasing probability as we have more houses
+        else
+            -- Count existing houses for this village
+            local houseCount = 0
+            for _, building in ipairs(game.buildings) do
+                if building.villageId == village.id and building.type == "house" then
+                    houseCount = houseCount + 1
+                end
+            end
+            
+            -- Higher chance to build houses when we have fewer of them
+            local houseChance = 0.8 - (houseCount * 0.05)
+            if houseChance > 0 and math.random() < houseChance then
+                shouldBuildHouse = true
+            end
+        end
+        
+        if shouldBuildHouse then
+            -- Find a good location for the house
+            local buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE)
+            
+            -- Create the task
+            self.task = {
+                x = buildX,
+                y = buildY,
+                type = "house"
+            }
+            
+            -- Deduct resources
+            Utils.deductResources(game.resources, Config.BUILDING_TYPES.house.cost)
+            
+            -- Set target location and state
+            self.targetX = buildX
+            self.targetY = buildY
+            self.state = "moving"
+            self.progress = 0
+            
+            return -- Task found, exit the function
+        end
+    end
+    
+    -- Second priority: Check if village has road needs
+    if #village.needsRoads > 0 and game.resources.wood >= 10 and game.resources.stone >= 5 then
+        -- Take the highest priority road need
+        local roadNeed = village.needsRoads[1]
+        
+        -- Check if this road is already being built
+        local roadBeingBuilt = false
+        for _, road in ipairs(game.roads) do
+            if not road.isComplete then
+                if (road.startVillageId == village.id and 
+                    Utils.distance(road.endX, road.endY, roadNeed.x, roadNeed.y) < 10) or
+                   (road.endVillageId == village.id and 
+                    Utils.distance(road.startX, road.startY, roadNeed.x, roadNeed.y) < 10) then
+                    roadBeingBuilt = true
+                    break
+                end
+            end
+        end
+        
+        if not roadBeingBuilt then
+            -- Create a new road
+            local endVillageId = nil
+            if roadNeed.type == "village" then
+                endVillageId = roadNeed.target.id
+            end
+            
+            local newRoad = require("entities/road").new(
+                village.x, village.y,
+                roadNeed.x, roadNeed.y,
+                village.id,
+                endVillageId,
+                0 -- 0% progress
+            )
+            
+            table.insert(game.roads, newRoad)
+            
+            -- Assign this builder to build the road
+            self.currentRoad = newRoad
+            self.state = "building_road"
+            return
+        end
+    end
+    
+    -- Third priority: Check if there are any unfinished roads that need building
     if math.random() < Config.ROAD_BUILD_PRIORITY and #game.roads > 0 then
         -- Look for incomplete roads
         local nearestRoad = nil
@@ -121,40 +215,31 @@ function Builder:findTask(game)
         end
     end
     
-    -- Roll chance to start building a structure
+    -- Final priority: Build resource structures based on village needs
     if math.random() < Config.BUILDER_BUILD_CHANCE then
-        -- Choose what to build based on village needs
-        local buildingType
+        -- Priority 1: Resources needed by village
+        local buildingType = nil
         
-        -- Priority 1: House if needed
-        if village.needsHousing and Utils.canAfford(game.resources, Config.BUILDING_TYPES.house.cost) then
-            buildingType = "house"
+        local possibleBuildings = {}
+        for _, buildingName in ipairs(village.needsResources) do
+            if Utils.canAfford(game.resources, Config.BUILDING_TYPES[buildingName].cost) then
+                table.insert(possibleBuildings, buildingName)
+            end
+        end
+        
+        if #possibleBuildings > 0 then
+            buildingType = possibleBuildings[math.random(#possibleBuildings)]
         else
-            -- Priority 2: Resources needed by village
-            local possibleBuildings = {}
-            for _, buildingName in ipairs(village.needsResources) do
-                if Utils.canAfford(game.resources, Config.BUILDING_TYPES[buildingName].cost) then
-                    table.insert(possibleBuildings, buildingName)
+            -- Priority 2: Any affordable building (that's not a house, as we already checked for that)
+            local affordableBuildings = {}
+            for type, info in pairs(Config.BUILDING_TYPES) do
+                if type ~= "house" and Utils.canAfford(game.resources, info.cost) then
+                    table.insert(affordableBuildings, type)
                 end
             end
             
-            if #possibleBuildings > 0 then
-                buildingType = possibleBuildings[math.random(#possibleBuildings)]
-            elseif Utils.canAfford(game.resources, Config.BUILDING_TYPES.house.cost) then
-                -- Priority 3: Default to house
-                buildingType = "house"
-            else
-                -- Priority 4: Any affordable building
-                local affordableBuildings = {}
-                for type, info in pairs(Config.BUILDING_TYPES) do
-                    if Utils.canAfford(game.resources, info.cost) then
-                        table.insert(affordableBuildings, type)
-                    end
-                end
-                
-                if #affordableBuildings > 0 then
-                    buildingType = affordableBuildings[math.random(#affordableBuildings)]
-                end
+            if #affordableBuildings > 0 then
+                buildingType = affordableBuildings[math.random(#affordableBuildings)]
             end
         end
         
@@ -177,18 +262,6 @@ function Builder:findTask(game)
             self.targetY = buildY
             self.state = "moving"
             self.progress = 0
-            
-            -- Create a road from village to building site
-            if math.random() < 0.3 then
-                local newRoad = require("entities/road").new(
-                    village.x, village.y,
-                    buildX, buildY,
-                    self.villageId,
-                    nil,
-                    0
-                )
-                table.insert(game.roads, newRoad)
-            end
         end
     end
 end

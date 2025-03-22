@@ -65,7 +65,7 @@ function UI.update(game, dt)
                 end
             end
             
-            local villageText = village and ("Village #" .. village.id) or "Unknown village"
+            local villageText = village and (village.name) or "Unknown village"
             
             UI.tooltip = {
                 title = "House",
@@ -93,7 +93,7 @@ function UI.update(game, dt)
         local totalPopulation = village.builderCount + village.villagerCount
         
         UI.tooltip = {
-            title = "Village #" .. village.id,
+            title = village.name,
             lines = {
                 "Population: " .. totalPopulation .. "/" .. village.populationCapacity,
                 "Builders: " .. village.builderCount .. "/" .. village.maxBuilders,
@@ -101,6 +101,32 @@ function UI.update(game, dt)
                 "Housing needed: " .. (village.needsHousing and "Yes" or "No")
             }
         }
+        
+        -- Add information about needed roads
+        if #village.needsRoads > 0 then
+            local needsLine = "Needs roads: "
+            local first = true
+            local count = 0
+            
+            for i, roadNeed in ipairs(village.needsRoads) do
+                if count < 2 then  -- Show at most 2 road needs
+                    if not first then needsLine = needsLine .. ", " end
+                    if roadNeed.type == "village" then
+                        needsLine = needsLine .. "to " .. roadNeed.target.name
+                    else
+                        needsLine = needsLine .. "to " .. roadNeed.target.type
+                    end
+                    first = false
+                    count = count + 1
+                end
+            end
+            
+            if #village.needsRoads > 2 then
+                needsLine = needsLine .. " and " .. (#village.needsRoads - 2) .. " more"
+            end
+            
+            table.insert(UI.tooltip.lines, needsLine)
+        end
         
         -- Add road building instruction
         if UI.roadCreationMode and not UI.roadStartVillage then
@@ -131,16 +157,43 @@ function UI.handleClick(game, x, y)
             return true
         -- If we're selecting an end village
         elseif UI.hoveredVillage and UI.roadStartVillage and UI.hoveredVillage.id ~= UI.roadStartVillage.id then
-            -- Create the road between villages
-            local newRoad = require("entities/road").new(
-                UI.roadStartX, UI.roadStartY,
-                UI.hoveredVillage.x, UI.hoveredVillage.y,
-                UI.roadStartVillage.id,
-                UI.hoveredVillage.id,
-                0 -- 0% progress
-            )
+            -- Don't create the road directly - add it to the village's needs
+            -- This makes roads cost resources and need to be built by builders
             
-            table.insert(game.roads, newRoad)
+            -- Check if there's already a road with these villages
+            local alreadyHasRoad = false
+            for _, road in ipairs(game.roads) do
+                if (road.startVillageId == UI.roadStartVillage.id and road.endVillageId == UI.hoveredVillage.id) or
+                   (road.startVillageId == UI.hoveredVillage.id and road.endVillageId == UI.roadStartVillage.id) then
+                    alreadyHasRoad = true
+                    break
+                end
+            end
+            
+            -- Add to village's road needs if no existing road
+            if not alreadyHasRoad then
+                local distance = Utils.distance(UI.roadStartVillage.x, UI.roadStartVillage.y, 
+                                               UI.hoveredVillage.x, UI.hoveredVillage.y)
+                
+                local priority = 10 -- High priority since player requested it
+                
+                table.insert(UI.roadStartVillage.needsRoads, {
+                    type = "village",
+                    target = UI.hoveredVillage,
+                    priority = priority,
+                    x = UI.hoveredVillage.x,
+                    y = UI.hoveredVillage.y
+                })
+                
+                -- Also add to other village's road needs
+                table.insert(UI.hoveredVillage.needsRoads, {
+                    type = "village",
+                    target = UI.roadStartVillage,
+                    priority = priority,
+                    x = UI.roadStartVillage.x,
+                    y = UI.roadStartVillage.y
+                })
+            end
             
             -- Reset road creation mode
             UI.roadCreationMode = false
@@ -172,7 +225,7 @@ function UI.handleClick(game, x, y)
             return true
         end
         
-        -- Check if we're clicking the "Build Road" button
+        -- Check if we're clicking the "Plan Road" button
         if x >= menuX + 20 and x <= menuX + 120 and
            y >= menuY + menuHeight - 40 and y <= menuY + menuHeight - 10 then
             UI.roadCreationMode = true
@@ -230,7 +283,7 @@ function UI.draw(game)
         -- Draw text instructions
         love.graphics.setColor(1, 1, 1)
         love.graphics.setFont(UI.font)
-        love.graphics.print("Building Road - Click on another village to connect or ESC to cancel", 
+        love.graphics.print("Planning Road - Click on another village to connect or ESC to cancel", 
             love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
     end
     
@@ -239,7 +292,7 @@ function UI.draw(game)
         love.graphics.setColor(0.8, 0.8, 0.2)
         love.graphics.setFont(UI.font)
         if not UI.roadStartVillage then
-            love.graphics.print("Road Building Mode - Select starting village", 
+            love.graphics.print("Road Planning Mode - Select starting village", 
                 10, love.graphics.getHeight() - 40)
         end
     end
@@ -247,7 +300,7 @@ function UI.draw(game)
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom. Press B for build menu. Press R for auto-roads.", 10, love.graphics.getHeight() - 20)
+    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom. Press B for build menu.", 10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
     if #game.villages > 0 then
@@ -316,7 +369,7 @@ function UI.drawVillageSummary(game)
     love.graphics.setFont(UI.smallFont)
     for i, village in ipairs(game.villages) do
         local totalPop = village.builderCount + village.villagerCount
-        local text = "Village #" .. village.id .. ": " .. totalPop .. "/" .. village.populationCapacity
+        local text = village.name .. ": " .. totalPop .. "/" .. village.populationCapacity
         
         -- Highlight the village if it's hovered
         if UI.hoveredVillage and UI.hoveredVillage.id == village.id then
@@ -380,11 +433,14 @@ function UI.drawBuildMenu(game)
         yOffset = yOffset + 40
     end
     
-    -- Draw road building option
+    -- Draw road planning option
     love.graphics.setColor(0.8, 0.8, 0.2)
     love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30)
     love.graphics.setColor(0, 0, 0)
-    love.graphics.print("Build Road", x + 30, y + menuHeight - 35)
+    love.graphics.print("Plan Road", x + 30, y + menuHeight - 35)
+    love.graphics.setColor(1, 1, 1, 0.7)
+    love.graphics.setFont(UI.smallFont)
+    love.graphics.print("Roads require builders & resources", x + 125, y + menuHeight - 35)
     
     -- Draw close button
     love.graphics.setColor(1, 0.3, 0.3)

@@ -31,11 +31,11 @@ local Config = {
             description = "Harvests wood from trees"
         },
         house = { 
-            cost = { wood = 20, stone = 5 }, 
+            cost = { wood = 15, stone = 5 }, -- Reduced cost to encourage more building
             income = 0, 
-            buildTime = 3, 
-            villagerCapacity = 2, 
-            spawnTime = 10,
+            buildTime = 2, -- Reduced build time for houses
+            villagerCapacity = 3, -- Increased capacity for better population growth
+            spawnTime = 8, -- Faster villager spawning
             description = "Houses villagers and increases village population capacity"
         },
         fishing_hut = {
@@ -61,6 +61,8 @@ local Config = {
     -- Village population settings
     DEFAULT_MAX_BUILDERS = 3,       -- Maximum builders per village without houses
     BASE_POPULATION_CAPACITY = 5,   -- Base population capacity per village
+    HOUSE_PRIORITY_FACTOR = 0.8,    -- How strongly builders prioritize building houses
+    POPULATION_GROWTH_TARGET = 0.7, -- Target to maintain population at % of capacity
     
     -- Resource initial values
     STARTING_MONEY = 100,

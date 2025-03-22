@@ -183,28 +183,7 @@ function love.mousepressed(x, y, button)
                 local newVillage = Village.new(worldX, worldY)
                 table.insert(game.villages, newVillage)
                 
-                -- Connect with roads to existing villages if they're close enough
-                if #game.villages > 1 then
-                    for _, existingVillage in ipairs(game.villages) do
-                        if existingVillage.id ~= newVillage.id then
-                            local distance = Utils.distance(newVillage.x, newVillage.y, existingVillage.x, existingVillage.y)
-                            
-                            -- Only automatically plan roads between villages that are not too far apart
-                            if distance <= Config.MAX_BUILD_DISTANCE * 2 then
-                                -- Create road plan
-                                local newRoad = Road.new(
-                                    existingVillage.x, existingVillage.y,
-                                    newVillage.x, newVillage.y,
-                                    existingVillage.id,
-                                    newVillage.id,
-                                    0  -- 0% progress
-                                )
-                                
-                                table.insert(game.roads, newRoad)
-                            end
-                        end
-                    end
-                end
+                -- No longer automatically create roads - villagers will build them as needed
                 
                 -- Select the new village
                 game.selectedVillage = newVillage
@@ -250,43 +229,5 @@ function love.keypressed(key)
         UI.showBuildMenu = false
     end
     
-    -- Toggle automatic road building
-    if key == "r" then
-        -- Create roads between all villages that don't have them
-        local villageCount = #game.villages
-        if villageCount >= 2 then
-            for i = 1, villageCount do
-                for j = i + 1, villageCount do
-                    local v1 = game.villages[i]
-                    local v2 = game.villages[j]
-                    
-                    -- Check if they already have a road
-                    local hasRoad = false
-                    for _, road in ipairs(game.roads) do
-                        if (road.startVillageId == v1.id and road.endVillageId == v2.id) or
-                           (road.startVillageId == v2.id and road.endVillageId == v1.id) then
-                            hasRoad = true
-                            break
-                        end
-                    end
-                    
-                    if not hasRoad then
-                        -- Create new road if villages aren't too far apart
-                        local distance = Utils.distance(v1.x, v1.y, v2.x, v2.y)
-                        if distance <= Config.MAX_BUILD_DISTANCE * 3 then
-                            local newRoad = Road.new(
-                                v1.x, v1.y,
-                                v2.x, v2.y,
-                                v1.id,
-                                v2.id,
-                                0  -- 0% progress
-                            )
-                            
-                            table.insert(game.roads, newRoad)
-                        end
-                    end
-                end
-            end
-        end
-    end
+    -- Remove automatic road building with R key
 end

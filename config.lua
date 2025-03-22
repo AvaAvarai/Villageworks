@@ -36,7 +36,7 @@ local Config = {
             buildTime = 3, 
             villagerCapacity = 2, 
             spawnTime = 10,
-            description = "Houses villagers"
+            description = "Houses villagers and increases village population capacity"
         },
         fishing_hut = {
             cost = { wood = 25, stone = 5 },
@@ -57,6 +57,10 @@ local Config = {
     BUILDER_BUILD_CHANCE = 0.05, -- Increased from 0.01
     BUILDER_SPEED = 40,
     VILLAGER_SPEED = 30,
+    
+    -- Village population settings
+    DEFAULT_MAX_BUILDERS = 3,       -- Maximum builders per village without houses
+    BASE_POPULATION_CAPACITY = 5,   -- Base population capacity per village
     
     -- Resource initial values
     STARTING_MONEY = 100,

@@ -10,6 +10,7 @@ function UI.init()
     
     -- UI state
     UI.hoveredBuilding = nil
+    UI.hoveredVillage = nil
     UI.selectedBuilding = nil
     UI.showBuildMenu = false
     UI.tooltip = nil
@@ -19,8 +20,9 @@ end
 function UI.update(game, dt)
     local mouseX, mouseY = love.mouse.getPosition()
     
-    -- Reset hover state
+    -- Reset hover states
     UI.hoveredBuilding = nil
+    UI.hoveredVillage = nil
     
     -- Check if mouse is over a building
     for _, building in ipairs(game.buildings) do
@@ -33,15 +35,39 @@ function UI.update(game, dt)
         end
     end
     
-    -- Update tooltip
+    -- Check if mouse is over a village
+    for _, village in ipairs(game.villages) do
+        local screenX, screenY = game.camera:worldToScreen(village.x, village.y)
+        local dist = math.sqrt((mouseX - screenX)^2 + (mouseY - screenY)^2)
+        
+        if dist < 20 then
+            UI.hoveredVillage = village
+            break
+        end
+    end
+    
+    -- Update tooltip for buildings
     UI.tooltip = nil
     if UI.hoveredBuilding then
         if UI.hoveredBuilding.type == "house" then
+            -- Find the village this house belongs to
+            local village = nil
+            for _, v in ipairs(game.villages) do
+                if v.id == UI.hoveredBuilding.villageId then
+                    village = v
+                    break
+                end
+            end
+            
+            local villageText = village and ("Village #" .. village.id) or "Unknown village"
+            
             UI.tooltip = {
                 title = "House",
                 lines = {
                     "Villagers: " .. UI.hoveredBuilding.currentVillagers .. "/" .. UI.hoveredBuilding.villagerCapacity,
-                    "Spawns a new villager every " .. Config.BUILDING_TYPES.house.spawnTime .. " seconds"
+                    "Spawns a new villager every " .. Config.BUILDING_TYPES.house.spawnTime .. " seconds",
+                    "Belongs to: " .. villageText,
+                    "+2 population capacity"
                 }
             }
         else
@@ -55,6 +81,20 @@ function UI.update(game, dt)
                 }
             }
         end
+    elseif UI.hoveredVillage then
+        -- Create tooltip for villages
+        local village = UI.hoveredVillage
+        local totalPopulation = village.builderCount + village.villagerCount
+        
+        UI.tooltip = {
+            title = "Village #" .. village.id,
+            lines = {
+                "Population: " .. totalPopulation .. "/" .. village.populationCapacity,
+                "Builders: " .. village.builderCount .. "/" .. village.maxBuilders,
+                "Villagers: " .. village.villagerCount,
+                "Housing needed: " .. (village.needsHousing and "Yes" or "No")
+            }
+        }
     end
 end
 
@@ -88,7 +128,12 @@ function UI.draw(game)
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom.", 10, love.graphics.getHeight() - 20)
+    love.graphics.print("Click to place a village ($" .. Config.VILLAGE_COST .. "). Arrow keys to move camera. Scroll to zoom. Press B for build menu.", 10, love.graphics.getHeight() - 20)
+    
+    -- Draw village summary panel
+    if #game.villages > 0 then
+        UI.drawVillageSummary(game)
+    end
 end
 
 -- Draw a tooltip
@@ -122,6 +167,54 @@ function UI.drawTooltip(tooltip, x, y)
     love.graphics.setFont(UI.smallFont)
     for i, line in ipairs(tooltip.lines) do
         love.graphics.print(line, x + padding, y + padding + lineHeight * i)
+    end
+end
+
+-- Draw a summary of all villages
+function UI.drawVillageSummary(game)
+    -- Only show if we have multiple villages
+    if #game.villages <= 1 then return end
+    
+    local width = 150
+    local lineHeight = 18
+    local padding = 5
+    local height = padding * 2 + lineHeight * (#game.villages + 1)
+    local x = love.graphics.getWidth() - width - 10
+    local y = 50
+    
+    -- Draw background
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", x, y, width, height)
+    love.graphics.setColor(1, 1, 1, 0.5)
+    love.graphics.rectangle("line", x, y, width, height)
+    
+    -- Draw title
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(UI.font)
+    love.graphics.print("Villages", x + padding, y + padding)
+    
+    -- Draw village list
+    love.graphics.setFont(UI.smallFont)
+    for i, village in ipairs(game.villages) do
+        local totalPop = village.builderCount + village.villagerCount
+        local text = "Village #" .. village.id .. ": " .. totalPop .. "/" .. village.populationCapacity
+        
+        -- Highlight the village if it's hovered
+        if UI.hoveredVillage and UI.hoveredVillage.id == village.id then
+            love.graphics.setColor(0.3, 0.7, 0.9, 0.5)
+            love.graphics.rectangle("fill", x + 2, y + padding + lineHeight * i, width - 4, lineHeight)
+        end
+        
+        -- Show different color based on population status
+        if totalPop >= village.populationCapacity then
+            love.graphics.setColor(1, 0.4, 0.4) -- Red for full
+        elseif totalPop >= village.populationCapacity * 0.8 then
+            love.graphics.setColor(1, 0.8, 0.2) -- Yellow for near capacity
+        else
+            love.graphics.setColor(0.8, 1, 0.8) -- Green for plenty of room
+        end
+        
+        love.graphics.print(text, x + padding, y + padding + lineHeight * i)
     end
 end
 
@@ -160,7 +253,12 @@ function UI.drawBuildMenu(game)
         love.graphics.print(buildingType:gsub("^%l", string.upper), x + 20, y + yOffset)
         love.graphics.print("Wood: " .. (info.cost.wood or 0) .. ", Stone: " .. (info.cost.stone or 0), x + 150, y + yOffset)
         
-        yOffset = yOffset + 30
+        -- Add small description of the building
+        love.graphics.setFont(UI.smallFont)
+        love.graphics.print(info.description, x + 20, y + yOffset + 18)
+        love.graphics.setFont(UI.font)
+        
+        yOffset = yOffset + 40
     end
     
     -- Draw close button

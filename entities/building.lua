@@ -40,21 +40,33 @@ end
 
 function Building:updateHouse(game, dt)
     if self.currentVillagers < self.villagerCapacity then
-        self.villagerTimer = self.villagerTimer - dt
-        if self.villagerTimer <= 0 then
-            self.villagerTimer = Config.BUILDING_TYPES.house.spawnTime
-            self.currentVillagers = self.currentVillagers + 1
-            
-            -- Create a new villager
-            local VillagerModule = require("entities/villager")
-            local newVillager = VillagerModule.new(
-                self.x + math.random(-10, 10),
-                self.y + math.random(-10, 10),
-                self.villageId,
-                self
-            )
-            
-            table.insert(game.villagers, newVillager)
+        -- Find the village
+        local village = nil
+        for _, v in ipairs(game.villages) do
+            if v.id == self.villageId then
+                village = v
+                break
+            end
+        end
+        
+        -- Only spawn villagers if village has population capacity
+        if village and village.builderCount + village.villagerCount < village.populationCapacity then
+            self.villagerTimer = self.villagerTimer - dt
+            if self.villagerTimer <= 0 then
+                self.villagerTimer = Config.BUILDING_TYPES.house.spawnTime
+                self.currentVillagers = self.currentVillagers + 1
+                
+                -- Create a new villager
+                local VillagerModule = require("entities/villager")
+                local newVillager = VillagerModule.new(
+                    self.x + math.random(-10, 10),
+                    self.y + math.random(-10, 10),
+                    self.villageId,
+                    self
+                )
+                
+                table.insert(game.villagers, newVillager)
+            end
         end
     end
 end

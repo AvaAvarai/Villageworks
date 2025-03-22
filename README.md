@@ -2,6 +2,14 @@
 
 A sophisticated civilization management simulation where you establish and nurture a network of interconnected settlements.
 
+## Demo Video
+
+Watch our gameplay demonstration to see Villageworks in action:
+
+Villageworks growth of Carthage Demo: [![Villageworks growth of Carthage Demo](docs/screenshot.png)](https://youtu.be/PIl3rFCVl0s)
+
+Click the image above or visit [https://youtu.be/PIl3rFCVl0s](https://youtu.be/PIl3rFCVl0s) to watch the demo.
+
 ## Overview
 
 Villageworks is a relaxing yet engaging management simulation where you take on the role of a benevolent overseer guiding the development of human civilization. Create multiple villages with historical names, construct buildings, establish resource production chains, and connect your settlements with road networks to build a thriving society.

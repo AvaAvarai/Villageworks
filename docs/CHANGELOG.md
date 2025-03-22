@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added resource refunding when buildings cannot be constructed
 - Added building overlap prevention for more realistic placement
 - Added visual building radius overlay when hovering over villages
+- Added improved building placement rules to prevent building on villages or overlapping with in-progress construction
+- Added building queue position planning system to prevent overlaps
 
 ### Changed
 
@@ -21,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Improved building placement logic with smarter positioning algorithms
 - Enhanced builder AI with improved positioning logic to prevent building overlaps
 - Added MAX_BUILD_DISTANCE configuration parameter to control building placement limits
+- Increased safety margins for building placement to prevent any potential overlaps
 
 ### Fixed
 
@@ -31,11 +34,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed building placement to prevent buildings from overlapping with each other
 - Fixed "Maximum stack depth reached" error by ensuring camera transformations are properly balanced
 - Fixed build menu not appearing when toggled or when clicking on villages
+- Fixed issue where buildings could overlap with villages or in-progress construction
+- Fixed rare issue where planned buildings could overlap with each other in the queue
 
 ### UI Improvements
 
 - Added transparent overlay showing building radius when hovering over villages
 - Visual feedback helps players understand building placement constraints
+- Improved building queue system to pre-plan building positions
 
 ## [0.1.1] - 2025-06-22
 

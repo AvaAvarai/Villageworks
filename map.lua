@@ -540,21 +540,65 @@ function Map:findNearestWaterEdge(startX, startY)
     return closestX, closestY
 end
 
--- Check if a position for a new building would overlap with existing buildings
+-- Check if a position is clear of any buildings or villages
 function Map:isPositionClearOfBuildings(worldX, worldY, game, buildingSize)
-    buildingSize = buildingSize or Config.BUILDING_SIZE or 20 -- Default building size
+    -- Default building size if not specified
+    buildingSize = buildingSize or Config.BUILDING_SIZE
     
-    -- Check all existing buildings
+    -- 1. Check for overlap with existing buildings
     for _, building in ipairs(game.buildings) do
-        -- Calculate distance between building centers
         local distance = Utils.distance(worldX, worldY, building.x, building.y)
-        
-        -- If distance is less than the sum of building sizes, they overlap
-        if distance < buildingSize * 2 then
+        -- Use a stricter threshold to ensure no overlaps
+        if distance < buildingSize * 2.2 then  -- Increased safety margin
             return false
         end
     end
     
+    -- 2. Check for overlap with villages
+    for _, village in ipairs(game.villages) do
+        local distance = Utils.distance(worldX, worldY, village.x, village.y)
+        -- Use a stricter threshold for villages
+        if distance < buildingSize * 2 then  -- Increased from 1.5 to 2
+            return false
+        end
+    end
+    
+    -- 3. Check for overlap with in-progress buildings being constructed by builders
+    for _, builder in ipairs(game.builders) do
+        -- Check builders that are currently moving to build or are actively building
+        if (builder.state == "building" or builder.state == "moving") and 
+           builder.task and builder.task.x and builder.task.y then
+            local distance = Utils.distance(worldX, worldY, builder.task.x, builder.task.y)
+            if distance < buildingSize * 2.2 then  -- Increased safety margin
+                return false
+            end
+        end
+        -- Also check target coordinates for builders on the move
+        if builder.targetX and builder.targetY then
+            local distance = Utils.distance(worldX, worldY, builder.targetX, builder.targetY)
+            if distance < buildingSize * 2.2 then  -- Increased safety margin
+                return false
+            end
+        end
+    end
+    
+    -- 4. Check for overlap with planned buildings in the building queue
+    local UI = require("ui")
+    for _, village in ipairs(game.villages) do
+        local buildQueue = UI.getBuildingQueue(village.id)
+        if buildQueue and buildQueue.plannedPositions then
+            for _, position in ipairs(buildQueue.plannedPositions) do
+                if position.x and position.y then
+                    local distance = Utils.distance(worldX, worldY, position.x, position.y)
+                    if distance < buildingSize * 2.2 then  -- Increased safety margin
+                        return false
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Position is clear if we pass all checks
     return true
 end
 

@@ -1260,7 +1260,7 @@ function UI.draw(game)
             love.graphics.setColor(0, 0.8, 0, 0.5)
             love.graphics.circle("fill", worldX, worldY, 15)
             love.graphics.setColor(1, 1, 1, 0.7)
-            love.graphics.print("Click to place village", worldX - 60, worldY - 40)
+            love.graphics.print("Click to place village", worldX - 60, worldY - 40) 
         else
             -- Invalid placement position
             love.graphics.setColor(0.8, 0, 0, 0.5)
@@ -1684,6 +1684,8 @@ function UI.getVillageBuildingQueue(villageId)
         for buildingType, _ in pairs(Config.BUILDING_TYPES) do
             UI.buildingQueues[villageId][buildingType] = 0
         end
+        -- Initialize planned positions array
+        UI.buildingQueues[villageId].plannedPositions = {}
     end
     return UI.buildingQueues[villageId]
 end
@@ -1692,7 +1694,8 @@ end
 function UI.hasQueuedBuildings(villageId)
     local queue = UI.getVillageBuildingQueue(villageId)
     for buildingType, count in pairs(queue) do
-        if count > 0 then
+        -- Skip the plannedPositions entry which is a table
+        if buildingType ~= "plannedPositions" and type(count) == "number" and count > 0 then
             return true
         end
     end
@@ -1703,21 +1706,37 @@ end
 function UI.getNextQueuedBuilding(villageId)
     local queue = UI.getVillageBuildingQueue(villageId)
     for buildingType, count in pairs(queue) do
-        if count > 0 then
+        -- Skip the plannedPositions entry which is a table
+        if buildingType ~= "plannedPositions" and type(count) == "number" and count > 0 then
             return buildingType
         end
     end
     return nil
 end
 
--- Decrement a building from the queue
+-- Decrement building in queue (called when a builder starts working on it)
 function UI.decrementBuildingQueue(villageId, buildingType)
-    local queue = UI.getVillageBuildingQueue(villageId)
-    if queue[buildingType] and queue[buildingType] > 0 then
-        queue[buildingType] = queue[buildingType] - 1
-        return true
+    if not UI.buildingQueues[villageId] then
+        return
     end
-    return false
+    
+    -- Decrement count if any in queue
+    if UI.buildingQueues[villageId][buildingType] and
+        (UI.buildingQueues[villageId][buildingType] or 0) > 0 then
+        
+        UI.buildingQueues[villageId][buildingType] =
+            UI.buildingQueues[villageId][buildingType] - 1
+            
+        -- Remove the oldest planned position of this type
+        if UI.buildingQueues[villageId].plannedPositions then
+            for i, position in ipairs(UI.buildingQueues[villageId].plannedPositions) do
+                if position.type == buildingType then
+                    table.remove(UI.buildingQueues[villageId].plannedPositions, i)
+                    break
+                end
+            end
+        end
+    end
 end
 
 -- Draw the main menu
@@ -1799,6 +1818,9 @@ end
 
 -- Draw the pause menu
 function UI.drawPauseMenu()
+    -- Save the current font so we can restore it
+    local currentFont = love.graphics.getFont()
+    
     -- Draw semi-transparent overlay
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
@@ -1833,6 +1855,9 @@ function UI.drawPauseMenu()
         local textWidth = UI.bigFont:getWidth(option)
         love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
     end
+    
+    -- Restore the original font
+    love.graphics.setFont(currentFont)
 end
 
 -- Draw the documentation popup (How to Play, About, or Changelog)
@@ -1989,6 +2014,74 @@ function UI.handlePopupClick(x, y)
     end
     
     return false
+end
+
+-- Get the building queue for a specific village
+function UI.getBuildingQueue(villageId)
+    if not UI.buildingQueues[villageId] then
+        UI.buildingQueues[villageId] = {}
+    end
+    
+    -- Add plannedPositions array if not exists
+    if not UI.buildingQueues[villageId].plannedPositions then
+        UI.buildingQueues[villageId].plannedPositions = {}
+    end
+    
+    return UI.buildingQueues[villageId]
+end
+
+-- Increment building in queue
+function UI.incrementBuildingQueue(game, buildingType)
+    if not game.selectedVillage then
+        return
+    end
+    
+    -- Get village location
+    local villageX = game.selectedVillage.x
+    local villageY = game.selectedVillage.y
+    
+    -- Initialize queue if needed
+    if not UI.buildingQueues[game.selectedVillage.id] then
+        UI.buildingQueues[game.selectedVillage.id] = {}
+    end
+    
+    -- Initialize count for this building type if needed
+    if not UI.buildingQueues[game.selectedVillage.id][buildingType] then
+        UI.buildingQueues[game.selectedVillage.id][buildingType] = 0
+    end
+    
+    -- Get or initialize planned positions array
+    if not UI.buildingQueues[game.selectedVillage.id].plannedPositions then
+        UI.buildingQueues[game.selectedVillage.id].plannedPositions = {}
+    end
+    
+    -- Plan a position for the new building
+    local foundPosition = false
+    local buildX, buildY
+    local Builder = require("entities/builder")
+    
+    -- Create a temporary builder to use its location finding logic
+    local tempBuilder = Builder.new(villageX, villageY, game.selectedVillage.id)
+    buildX, buildY = Builder.findBuildingLocation(tempBuilder, game, buildingType)
+    
+    if buildX and buildY then
+        -- Store the planned position
+        table.insert(UI.buildingQueues[game.selectedVillage.id].plannedPositions, {
+            x = buildX,
+            y = buildY,
+            type = buildingType
+        })
+        
+        -- Increment the count
+        UI.buildingQueues[game.selectedVillage.id][buildingType] = 
+            (UI.buildingQueues[game.selectedVillage.id][buildingType] or 0) + 1
+            
+        -- Automatically close build menu after adding to queue
+        UI.showBuildMenu = false
+    else
+        -- Could not find a position - show error message
+        UI.showMessage("Cannot find a suitable location for this building!")
+    end
 end
 
 return UI 

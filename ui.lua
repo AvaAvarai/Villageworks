@@ -8,7 +8,10 @@ function UI.init()
     UI.font = love.graphics.newFont(14)
     UI.bigFont = love.graphics.newFont(20)
     UI.smallFont = love.graphics.newFont(10)
-    UI.titleFont = love.graphics.newFont(32)  -- Larger font for titles
+    UI.titleFont = love.graphics.newFont(48)  -- Larger font for titles (increased from 32 to 48)
+    
+    -- Fun font for main menu (use a playful font if possible, increased size)
+    UI.menuFont = love.graphics.newFont(32)
     
     -- Pre-load background image
     UI.backgroundImage = love.graphics.newImage("data/background.png")
@@ -24,6 +27,9 @@ function UI.init()
     UI.roadStartVillage = nil
     UI.roadStartX = nil
     UI.roadStartY = nil
+    
+    -- Hover state for menu buttons
+    UI.hoveredButton = nil
     
     -- Message system
     UI.message = nil
@@ -770,6 +776,40 @@ function UI.update(game, dt)
     -- Reset hover states
     UI.hoveredBuilding = nil
     UI.hoveredVillage = nil
+    UI.hoveredButton = nil
+    
+    -- Handle hover detection for main menu
+    if UI.showMainMenu then
+        local menuWidth = 300
+        local buttonHeight = 60  -- Match the actual button height in drawMainMenu
+        local buttonSpacing = 20
+        local menuX = (love.graphics.getWidth() - menuWidth) / 2
+        local startY = love.graphics.getHeight() / 2 - 50  -- Match position in drawMainMenu
+        
+        for i, option in ipairs(UI.mainMenuOptions) do
+            local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
+            
+            -- Special case for docs row
+            if option == "Docs" then
+                -- Check hover for documentation buttons
+                local smallButtonWidth = (menuWidth - 20) / 3
+                
+                for j, docOption in ipairs(UI.docsOptions) do
+                    local docButtonX = menuX + (j-1) * (smallButtonWidth + 10)
+                    
+                    if mouseX >= docButtonX and mouseX <= docButtonX + smallButtonWidth and
+                       mouseY >= buttonY and mouseY <= buttonY + buttonHeight then
+                        UI.hoveredButton = "doc_" .. j
+                        break
+                    end
+                end
+            elseif mouseX >= menuX and mouseX <= menuX + menuWidth and
+                   mouseY >= buttonY and mouseY <= buttonY + buttonHeight then
+                UI.hoveredButton = option
+                break
+            end
+        end
+    end
     
     -- Check if mouse is over a building
     for _, building in ipairs(game.buildings) do
@@ -1103,10 +1143,10 @@ function UI.handleMainMenuClick(game, x, y)
     
     -- Handle menu option clicks
     local menuWidth = 300
-    local buttonHeight = 50
+    local buttonHeight = 60  -- Updated to match the new button height
     local buttonSpacing = 20
     local menuX = (love.graphics.getWidth() - menuWidth) / 2
-    local startY = love.graphics.getHeight() / 2 - 100
+    local startY = love.graphics.getHeight() / 2 - 50  -- Updated to match drawMainMenu
     
     for i, option in ipairs(UI.mainMenuOptions) do
         local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
@@ -1582,17 +1622,18 @@ function UI.drawBuildMenu(game)
     local menuHeight = 350
     local x = (love.graphics.getWidth() - menuWidth) / 2
     local y = (love.graphics.getHeight() - menuHeight) / 2
+    local cornerRadius = 10  -- Radius for rounded corners
     
     -- Draw background
     love.graphics.setColor(0, 0, 0, 0.9)
-    love.graphics.rectangle("fill", x, y, menuWidth, menuHeight)
+    love.graphics.rectangle("fill", x, y, menuWidth, menuHeight, cornerRadius, cornerRadius)
     love.graphics.setColor(1, 1, 1, 0.5)
-    love.graphics.rectangle("line", x, y, menuWidth, menuHeight)
+    love.graphics.rectangle("line", x, y, menuWidth, menuHeight, cornerRadius, cornerRadius)
     
     -- Draw title
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(UI.bigFont)
-    love.graphics.print("Build Menu", x + 10, y + 10)
+    love.graphics.print("Build Menu", x + 20, y + 15)
     
     -- Draw building options
     love.graphics.setFont(UI.font)
@@ -1632,7 +1673,7 @@ function UI.drawBuildMenu(game)
             
             -- Draw + button (moved to x + 400)
             love.graphics.setColor(0.3, 0.7, 0.3)
-            love.graphics.rectangle("fill", x + 400, y + yOffset - 5, 20, 20)
+            love.graphics.rectangle("fill", x + 400, y + yOffset - 5, 20, 20, 4, 4)
             love.graphics.setColor(0, 0, 0)
             love.graphics.print("+", x + 407, y + yOffset - 3)
             
@@ -1642,7 +1683,7 @@ function UI.drawBuildMenu(game)
             else
                 love.graphics.setColor(0.5, 0.5, 0.5)
             end
-            love.graphics.rectangle("fill", x + 420, y + yOffset - 5, 20, 20)
+            love.graphics.rectangle("fill", x + 420, y + yOffset - 5, 20, 20, 4, 4)
             love.graphics.setColor(0, 0, 0)
             love.graphics.print("-", x + 427, y + yOffset - 3)
         end
@@ -1658,7 +1699,7 @@ function UI.drawBuildMenu(game)
     
     -- Draw road planning option
     love.graphics.setColor(0.8, 0.8, 0.2)
-    love.graphics.rectangle("fill", x + 20, y + menuHeight - 80, 100, 30)
+    love.graphics.rectangle("fill", x + 20, y + menuHeight - 80, 100, 30, 8, 8)
     love.graphics.setColor(0, 0, 0)
     love.graphics.print("Plan Road", x + 30, y + menuHeight - 75)
     love.graphics.setColor(1, 1, 1, 0.7)
@@ -1667,7 +1708,7 @@ function UI.drawBuildMenu(game)
     
     -- Draw village building option 
     love.graphics.setColor(0, 0.8, 0)
-    love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30)
+    love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30, 8, 8)
     love.graphics.setColor(0, 0, 0)
     love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, x + 30, y + menuHeight - 35)
     love.graphics.setColor(1, 1, 1, 0.7)
@@ -1675,7 +1716,7 @@ function UI.drawBuildMenu(game)
     
     -- Draw close button
     love.graphics.setColor(1, 0.3, 0.3)
-    love.graphics.rectangle("fill", x + menuWidth - 30, y + 10, 20, 20)
+    love.graphics.rectangle("fill", x + menuWidth - 30, y + 10, 20, 20, 5, 5)
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("X", x + menuWidth - 24, y + 10)
 end
@@ -1769,21 +1810,66 @@ function UI.drawMainMenu()
     
     love.graphics.draw(UI.backgroundImage, x, y, 0, scale, scale)
     
-    -- Draw title
-    love.graphics.setColor(1, 1, 1)
+    -- Add a dark overlay for better text visibility (darkened at the top and bottom, lighter in the middle)
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight / 3) -- Darker at top
+    
+    -- Center gradient section
+    for i = 1, 10 do
+        local alpha = 0.7 - (i / 15) -- Gradient from 0.7 to 0.03
+        love.graphics.setColor(0, 0, 0, alpha)
+        local height = screenHeight / 3 / 10
+        love.graphics.rectangle("fill", 0, screenHeight / 3 + (i-1) * height, screenWidth, height)
+    end
+    
+    -- Bottom section
+    love.graphics.setColor(0, 0, 0, 0.3)
+    love.graphics.rectangle("fill", 0, screenHeight * 2/3, screenWidth, screenHeight/3)
+    
+    -- Draw title with a dramatic glow effect
     love.graphics.setFont(UI.titleFont)
     local title = "Villageworks"
     local titleWidth = UI.titleFont:getWidth(title)
-    love.graphics.print(title, (love.graphics.getWidth() - titleWidth) / 2, 100)
+    
+    -- Draw shadow for depth
+    love.graphics.setColor(0.1, 0.2, 0.3, 0.8)
+    love.graphics.print(title, (screenWidth - titleWidth) / 2 + 4, 78)
+    
+    -- Draw outer glow
+    local glowColor = {0.4, 0.7, 1.0}
+    local pulseIntensity = math.abs(math.sin(love.timer.getTime() * 0.5)) * 0.5
+    
+    for i = 5, 1, -1 do
+        local alpha = (pulseIntensity / i) * 0.3
+        love.graphics.setColor(glowColor[1], glowColor[2], glowColor[3], alpha)
+        love.graphics.print(title, (screenWidth - titleWidth) / 2 - i, 80 - i)
+        love.graphics.print(title, (screenWidth - titleWidth) / 2 + i, 80 - i)
+        love.graphics.print(title, (screenWidth - titleWidth) / 2 - i, 80 + i)
+        love.graphics.print(title, (screenWidth - titleWidth) / 2 + i, 80 + i)
+    end
+    
+    -- Draw main title with a subtle gradient effect
+    local r, g, b = 1, 1, 1
+    love.graphics.setColor(r, g, b, 1)
+    love.graphics.print(title, (screenWidth - titleWidth) / 2, 80)
+    
+    -- Draw tagline
+    love.graphics.setFont(UI.bigFont)  -- Larger font for tagline
+    local tagline = "Create and manage a network of thriving settlements."
+    local taglineWidth = UI.bigFont:getWidth(tagline)
+    love.graphics.setColor(0.9, 0.9, 0.9, 0.9)
+    love.graphics.print(tagline, (screenWidth - taglineWidth) / 2, 140)
     
     -- Draw menu options
     local menuWidth = 300
-    local buttonHeight = 50
+    local buttonHeight = 60  -- Increased button height
     local buttonSpacing = 20
-    local menuX = (love.graphics.getWidth() - menuWidth) / 2
-    local startY = love.graphics.getHeight() / 2 - 100
+    local menuX = (screenWidth - menuWidth) / 2
+    local startY = screenHeight / 2 - 50
+    local cornerRadius = 10  -- Radius for rounded corners
     
-    love.graphics.setFont(UI.bigFont)
+    -- Use the fun font for menu buttons
+    love.graphics.setFont(UI.menuFont)
     
     for i, option in ipairs(UI.mainMenuOptions) do
         local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
@@ -1795,40 +1881,100 @@ function UI.drawMainMenu()
             
             for j, docOption in ipairs(UI.docsOptions) do
                 local docButtonX = menuX + (j-1) * (smallButtonWidth + 10)
+                local isHovered = UI.hoveredButton == "doc_" .. j
                 
-                -- Draw button background
+                -- Draw button background with hover effect
                 if j == 1 then
-                    love.graphics.setColor(0.2, 0.4, 0.5) -- How to Play
+                    -- How to Play
+                    love.graphics.setColor(0.2, 0.4, 0.5)
+                    if isHovered then love.graphics.setColor(0.3, 0.5, 0.7) end
                 elseif j == 2 then
-                    love.graphics.setColor(0.3, 0.3, 0.5) -- About
+                    -- About
+                    love.graphics.setColor(0.3, 0.3, 0.5)
+                    if isHovered then love.graphics.setColor(0.4, 0.4, 0.7) end
                 else
-                    love.graphics.setColor(0.4, 0.3, 0.4) -- Changelog
+                    -- Changelog
+                    love.graphics.setColor(0.4, 0.3, 0.4)
+                    if isHovered then love.graphics.setColor(0.6, 0.4, 0.6) end
                 end
                 
-                love.graphics.rectangle("fill", docButtonX, buttonY, smallButtonWidth, buttonHeight)
+                -- Draw rounded rectangle for button
+                love.graphics.rectangle("fill", docButtonX, buttonY, smallButtonWidth, buttonHeight, cornerRadius, cornerRadius)
+                
+                -- Add a subtle glow on hover
+                if isHovered then
+                    -- Draw glow effect
+                    love.graphics.setColor(0.6, 0.8, 1, 0.3)
+                    love.graphics.rectangle("fill", docButtonX, buttonY, smallButtonWidth, buttonHeight, cornerRadius, cornerRadius)
+                end
+                
+                -- Draw button border
                 love.graphics.setColor(0.5, 0.7, 0.9)
-                love.graphics.rectangle("line", docButtonX, buttonY, smallButtonWidth, buttonHeight)
+                love.graphics.rectangle("line", docButtonX, buttonY, smallButtonWidth, buttonHeight, cornerRadius, cornerRadius)
                 
                 -- Draw button text
                 love.graphics.setColor(1, 1, 1)
                 love.graphics.setFont(UI.font) -- Use smaller font for doc buttons
                 local textWidth = UI.font:getWidth(docOption)
-                love.graphics.print(docOption, docButtonX + (smallButtonWidth - textWidth) / 2, buttonY + 17)
+                
+                -- Button text animation on hover
+                local textY = buttonY + 20  -- Adjusted y position
+                if isHovered then
+                    textY = buttonY + 20 + math.sin(love.timer.getTime() * 5) * 2
+                end
+                
+                love.graphics.print(docOption, docButtonX + (smallButtonWidth - textWidth) / 2, textY)
             end
             
             -- Reset font size for other buttons
-            love.graphics.setFont(UI.bigFont)
+            love.graphics.setFont(UI.menuFont)
         else
-            -- Draw regular button background
+            -- Check if this button is hovered
+            local isHovered = UI.hoveredButton == option
+            
+            -- Draw regular button background with hover effects
             love.graphics.setColor(0.2, 0.3, 0.4)
-            love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight)
-            love.graphics.setColor(0.5, 0.7, 0.9)
-            love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight)
+            
+            -- Change color on hover
+            if isHovered then
+                love.graphics.setColor(0.3, 0.4, 0.6)
+            end
+            
+            -- Draw the button with rounded corners
+            love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight, cornerRadius, cornerRadius)
+            
+            -- Add a subtle glow on hover
+            if isHovered then
+                -- Draw glow effect
+                love.graphics.setColor(0.6, 0.8, 1, 0.3)
+                love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight, cornerRadius, cornerRadius)
+            end
+            
+            -- Draw button border with animation if hovered
+            if isHovered then
+                love.graphics.setColor(0.7, 0.9, 1)
+                love.graphics.setLineWidth(2)
+            else
+                love.graphics.setColor(0.5, 0.7, 0.9)
+                love.graphics.setLineWidth(1)
+            end
+            
+            love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight, cornerRadius, cornerRadius)
+            love.graphics.setLineWidth(1)
             
             -- Draw button text
             love.graphics.setColor(1, 1, 1)
-            local textWidth = UI.bigFont:getWidth(option)
-            love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
+            local textWidth = UI.menuFont:getWidth(option)
+            
+            -- Button text animation on hover
+            local textX = menuX + (menuWidth - textWidth) / 2
+            local textY = buttonY + 15  -- Adjusted y position
+            
+            if isHovered then
+                textY = buttonY + 15 + math.sin(love.timer.getTime() * 5) * 2
+            end
+            
+            love.graphics.print(option, textX, textY)
         end
     end
     
@@ -1837,7 +1983,7 @@ function UI.drawMainMenu()
     love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.setFont(UI.smallFont)
     local versionString = Version.getFullVersionString()
-    love.graphics.print(versionString, 10, love.graphics.getHeight() - 20)
+    love.graphics.print(versionString, 10, screenHeight - 20)
 end
 
 -- Draw the pause menu
@@ -1862,6 +2008,7 @@ function UI.drawPauseMenu()
     local buttonSpacing = 20
     local menuX = (love.graphics.getWidth() - menuWidth) / 2
     local startY = love.graphics.getHeight() / 2 - 50
+    local cornerRadius = 10  -- Radius for rounded corners
     
     love.graphics.setFont(UI.bigFont)
     
@@ -1870,9 +2017,9 @@ function UI.drawPauseMenu()
         
         -- Draw button background
         love.graphics.setColor(0.2, 0.3, 0.4)
-        love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight)
+        love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight, cornerRadius, cornerRadius)
         love.graphics.setColor(0.5, 0.7, 0.9)
-        love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight)
+        love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight, cornerRadius, cornerRadius)
         
         -- Draw button text
         love.graphics.setColor(1, 1, 1)
@@ -1890,12 +2037,13 @@ function UI.drawDocumentationPopup()
     local height = love.graphics.getHeight() * 0.8
     local x = (love.graphics.getWidth() - width) / 2
     local y = (love.graphics.getHeight() - height) / 2
+    local cornerRadius = 10  -- Radius for rounded corners
     
     -- Draw popup background
     love.graphics.setColor(0.1, 0.1, 0.1, 0.95)
-    love.graphics.rectangle("fill", x, y, width, height)
+    love.graphics.rectangle("fill", x, y, width, height, cornerRadius, cornerRadius)
     love.graphics.setColor(0.5, 0.5, 0.7, 1)
-    love.graphics.rectangle("line", x, y, width, height)
+    love.graphics.rectangle("line", x, y, width, height, cornerRadius, cornerRadius)
     
     -- Draw title based on popup type
     love.graphics.setColor(1, 1, 1)
@@ -1919,7 +2067,7 @@ function UI.drawDocumentationPopup()
     
     -- Draw close button
     love.graphics.setColor(0.7, 0.3, 0.3)
-    love.graphics.rectangle("fill", x + width - 40, y + 20, 25, 25)
+    love.graphics.rectangle("fill", x + width - 40, y + 20, 25, 25, 5, 5) -- Small corner radius for close button
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(UI.font)
     love.graphics.print("X", x + width - 33, y + 25)

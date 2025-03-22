@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed build menu not appearing when toggled or when clicking on villages
 - Fixed issue where buildings could overlap with villages or in-progress construction
 - Fixed rare issue where planned buildings could overlap with each other in the queue
+- Fixed menu button hover detection offset issue
 
 ### UI Improvements
 
@@ -43,6 +44,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Visual feedback helps players understand building placement constraints
 - Improved building queue system to pre-plan building positions
 - Added background image to the main menu for a more polished look
+- Revamped main menu with larger font, game tagline, and interactive button hover effects
+- Added subtle animations to menu elements for a more engaging experience
+- Enhanced main menu with dramatic title effects and improved background gradient
+- Increased title and button size for better visibility and easier interaction
+- Added rounded corners to all buttons and menu panels for a modern look
+- Fixed button hover detection to precisely match button dimensions
 
 ## [0.1.1] - 2025-06-22
 

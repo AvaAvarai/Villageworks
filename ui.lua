@@ -8,6 +8,7 @@ function UI.init()
     UI.font = love.graphics.newFont(14)
     UI.bigFont = love.graphics.newFont(20)
     UI.smallFont = love.graphics.newFont(10)
+    UI.titleFont = love.graphics.newFont(32)  -- Larger font for titles
     
     -- UI state
     UI.hoveredBuilding = nil
@@ -28,6 +29,26 @@ function UI.init()
     
     -- Building queue system
     UI.buildingQueues = {} -- Store building queues per village
+    
+    -- Menu states
+    UI.showMainMenu = true   -- Start with main menu visible
+    UI.showPauseMenu = false -- Pause menu initially hidden
+    UI.gameRunning = false   -- Game not running until started
+    
+    -- Main menu options
+    UI.mainMenuOptions = {
+        "New Game",
+        "Load Game",
+        "About",
+        "Exit"
+    }
+    
+    -- Pause menu options
+    UI.pauseMenuOptions = {
+        "Resume",
+        "Save Game",
+        "Exit to Main Menu"
+    }
 end
 
 -- Update UI state
@@ -169,6 +190,16 @@ end
 
 -- Handle UI clicks
 function UI.handleClick(game, x, y)
+    -- If main menu is showing, handle main menu clicks
+    if UI.showMainMenu then
+        return UI.handleMainMenuClick(game, x, y)
+    end
+    
+    -- If pause menu is showing, handle pause menu clicks
+    if UI.showPauseMenu then
+        return UI.handlePauseMenuClick(game, x, y)
+    end
+    
     -- Check for road creation mode
     if UI.roadCreationMode then
         -- If we're selecting a start village
@@ -327,9 +358,109 @@ function UI.handleClick(game, x, y)
     return false
 end
 
+-- Handle main menu clicks
+function UI.handleMainMenuClick(game, x, y)
+    local menuWidth = 300
+    local buttonHeight = 50
+    local buttonSpacing = 20
+    local menuX = (love.graphics.getWidth() - menuWidth) / 2
+    local startY = love.graphics.getHeight() / 2 - 50
+    
+    for i, option in ipairs(UI.mainMenuOptions) do
+        local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
+        
+        if x >= menuX and x <= menuX + menuWidth and
+           y >= buttonY and y <= buttonY + buttonHeight then
+            
+            -- Handle option selection
+            if option == "New Game" then
+                UI.showMainMenu = false
+                UI.gameRunning = true
+                game:reset() -- Reset game state for a new game
+                return true
+            elseif option == "Load Game" then
+                -- TODO: Implement game loading
+                UI.showMessage("Loading game not yet implemented")
+                return true
+            elseif option == "About" then
+                UI.showMessage("Village Builder God Game - Created by Villageworks")
+                return true
+            elseif option == "Exit" then
+                love.event.quit()
+                return true
+            end
+        end
+    end
+    
+    return true -- Capture all clicks in main menu
+end
+
+-- Handle pause menu clicks
+function UI.handlePauseMenuClick(game, x, y)
+    local menuWidth = 300
+    local buttonHeight = 50
+    local buttonSpacing = 20
+    local menuX = (love.graphics.getWidth() - menuWidth) / 2
+    local startY = love.graphics.getHeight() / 2 - 50
+    
+    for i, option in ipairs(UI.pauseMenuOptions) do
+        local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
+        
+        if x >= menuX and x <= menuX + menuWidth and
+           y >= buttonY and y <= buttonY + buttonHeight then
+            
+            -- Handle option selection
+            if option == "Resume" then
+                UI.showPauseMenu = false
+                return true
+            elseif option == "Save Game" then
+                -- TODO: Implement game saving
+                UI.showMessage("Game saved (not actually implemented yet)")
+                return true
+            elseif option == "Exit to Main Menu" then
+                UI.showPauseMenu = false
+                UI.showMainMenu = true
+                UI.gameRunning = false
+                return true
+            end
+        end
+    end
+    
+    return true -- Capture all clicks in pause menu
+end
+
 -- Draw the game UI
 function UI.draw(game)
-    -- Draw top bar
+    -- If main menu is showing, draw it and nothing else
+    if UI.showMainMenu then
+        UI.drawMainMenu()
+        return
+    end
+    
+    -- Draw game world
+    game.camera:beginDraw()
+    
+    -- Draw grid
+    drawGrid(game)
+    
+    -- Draw entities in proper order
+    drawEntities(game)
+    
+    -- Draw village placement preview if in building mode
+    if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+        local mouseX, mouseY = love.mouse.getPosition()
+        local worldX, worldY = game.camera:screenToWorld(mouseX, mouseY)
+        
+        love.graphics.setColor(0, 0.8, 0, 0.5)
+        love.graphics.circle("fill", worldX, worldY, 15)
+        love.graphics.setColor(1, 1, 1, 0.7)
+        love.graphics.print("Click to place village", worldX - 60, worldY - 40)
+    end
+    
+    -- End camera transform
+    game.camera:endDraw()
+    
+    -- Draw normal game UI
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), 40)
     
@@ -391,6 +522,12 @@ function UI.draw(game)
             10, love.graphics.getHeight() - 40)
     end
     
+    -- Draw game speed indicator
+    if game.gameSpeed > Config.TIME_NORMAL_SPEED then
+        love.graphics.setColor(1, 0.8, 0.2)
+        love.graphics.print("FAST FORWARD (x" .. game.gameSpeed .. ")", 10, love.graphics.getHeight() - 40)
+    end
+    
     -- Draw message if there is one
     if UI.message then
         local msgWidth = love.graphics.getFont():getWidth(UI.message) + 20
@@ -412,12 +549,87 @@ function UI.draw(game)
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Press B for build menu. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom.", 
+    love.graphics.print("Press B for build menu. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom. ESC to pause.", 
                         10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
     if #game.villages > 0 then
         UI.drawVillageSummary(game)
+    end
+    
+    -- Draw pause menu if showing (on top of everything else)
+    if UI.showPauseMenu then
+        UI.drawPauseMenu()
+    end
+end
+
+-- Draw the grid
+function drawGrid(game)
+    love.graphics.setColor(0.2, 0.2, 0.2)
+    
+    -- Calculate visible grid area
+    local startX = math.floor(game.camera.x / Config.TILE_SIZE) * Config.TILE_SIZE
+    local startY = math.floor(game.camera.y / Config.TILE_SIZE) * Config.TILE_SIZE
+    local endX = startX + (love.graphics.getWidth() / game.camera.scale) + Config.TILE_SIZE
+    local endY = startY + (love.graphics.getHeight() / game.camera.scale) + Config.TILE_SIZE
+    
+    for x = startX, endX, Config.TILE_SIZE do
+        for y = startY, endY, Config.TILE_SIZE do
+            love.graphics.rectangle("line", x, y, Config.TILE_SIZE, Config.TILE_SIZE)
+        end
+    end
+end
+
+-- Draw all entities
+function drawEntities(game)
+    -- Draw roads first (so they appear behind everything else)
+    for _, road in ipairs(game.roads) do
+        road:draw()
+    end
+    
+    -- Draw all villages
+    for _, village in ipairs(game.villages) do
+        village:draw()
+        
+        -- Highlight selected village
+        if game.selectedVillage and village.id == game.selectedVillage.id then
+            love.graphics.setColor(1, 1, 0, 0.3)
+            love.graphics.circle("line", village.x, village.y, 18)
+            love.graphics.circle("line", village.x, village.y, 20)
+        end
+    end
+    
+    -- Draw all buildings
+    for _, building in ipairs(game.buildings) do
+        building:draw()
+        
+        -- Highlight buildings of selected village
+        if game.selectedVillage and building.villageId == game.selectedVillage.id then
+            love.graphics.setColor(1, 1, 0, 0.2)
+            love.graphics.rectangle("line", building.x - 12, building.y - 12, 24, 24)
+        end
+    end
+    
+    -- Draw all builders
+    for _, builder in ipairs(game.builders) do
+        builder:draw()
+        
+        -- Highlight builders of selected village
+        if game.selectedVillage and builder.villageId == game.selectedVillage.id then
+            love.graphics.setColor(1, 1, 0, 0.5)
+            love.graphics.circle("line", builder.x, builder.y, 7)
+        end
+    end
+    
+    -- Draw all villagers
+    for _, villager in ipairs(game.villagers) do
+        villager:draw()
+        
+        -- Highlight villagers of selected village
+        if game.selectedVillage and villager.villageId == game.selectedVillage.id then
+            love.graphics.setColor(1, 1, 0, 0.5)
+            love.graphics.circle("line", villager.x, villager.y, 6)
+        end
     end
 end
 
@@ -654,6 +866,82 @@ function UI.decrementBuildingQueue(villageId, buildingType)
         return true
     end
     return false
+end
+
+-- Draw the main menu
+function UI.drawMainMenu()
+    -- Draw background (could be replaced with a nice image)
+    love.graphics.setColor(0.1, 0.2, 0.3)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    
+    -- Draw title
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(UI.titleFont)
+    local title = "Village Builder"
+    local titleWidth = UI.titleFont:getWidth(title)
+    love.graphics.print(title, (love.graphics.getWidth() - titleWidth) / 2, 100)
+    
+    -- Draw menu options
+    local menuWidth = 300
+    local buttonHeight = 50
+    local buttonSpacing = 20
+    local menuX = (love.graphics.getWidth() - menuWidth) / 2
+    local startY = love.graphics.getHeight() / 2 - 50
+    
+    love.graphics.setFont(UI.bigFont)
+    
+    for i, option in ipairs(UI.mainMenuOptions) do
+        local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
+        
+        -- Draw button background
+        love.graphics.setColor(0.2, 0.3, 0.4)
+        love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight)
+        love.graphics.setColor(0.5, 0.7, 0.9)
+        love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight)
+        
+        -- Draw button text
+        love.graphics.setColor(1, 1, 1)
+        local textWidth = UI.bigFont:getWidth(option)
+        love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
+    end
+end
+
+-- Draw the pause menu
+function UI.drawPauseMenu()
+    -- Draw semi-transparent overlay
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    
+    -- Draw title
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(UI.titleFont)
+    local title = "Game Paused"
+    local titleWidth = UI.titleFont:getWidth(title)
+    love.graphics.print(title, (love.graphics.getWidth() - titleWidth) / 2, 100)
+    
+    -- Draw menu options
+    local menuWidth = 300
+    local buttonHeight = 50
+    local buttonSpacing = 20
+    local menuX = (love.graphics.getWidth() - menuWidth) / 2
+    local startY = love.graphics.getHeight() / 2 - 50
+    
+    love.graphics.setFont(UI.bigFont)
+    
+    for i, option in ipairs(UI.pauseMenuOptions) do
+        local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
+        
+        -- Draw button background
+        love.graphics.setColor(0.2, 0.3, 0.4)
+        love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight)
+        love.graphics.setColor(0.5, 0.7, 0.9)
+        love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight)
+        
+        -- Draw button text
+        love.graphics.setColor(1, 1, 1)
+        local textWidth = UI.bigFont:getWidth(option)
+        love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
+    end
 end
 
 return UI 

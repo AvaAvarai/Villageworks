@@ -24,6 +24,31 @@ local game = {
     gameSpeed = Config.TIME_NORMAL_SPEED -- Current game speed
 }
 
+-- Function to reset the game state
+function game:reset()
+    self.money = Config.STARTING_MONEY
+    self.villages = {}
+    self.builders = {}
+    self.buildings = {}
+    self.villagers = {}
+    self.roads = {}
+    self.resources = {
+        wood = Config.STARTING_RESOURCES.wood,
+        stone = Config.STARTING_RESOURCES.stone,
+        food = Config.STARTING_RESOURCES.food
+    }
+    self.selectedEntity = nil
+    self.selectedVillage = nil
+    self.uiMode = Config.UI_MODE_NORMAL
+    self.gameSpeed = Config.TIME_NORMAL_SPEED
+    
+    -- Reset camera position
+    if self.camera then
+        self.camera:setTarget(0, 0)
+        self.camera.targetScale = 1
+    end
+end
+
 function love.load()
     love.window.setTitle("Village Builder God Game")
     love.window.setMode(800, 600)
@@ -39,6 +64,14 @@ function love.load()
 end
 
 function love.update(dt)
+    -- Update UI always
+    UI.update(game, dt)
+    
+    -- If in main menu or pause menu, don't update game logic
+    if UI.showMainMenu or UI.showPauseMenu then
+        return
+    end
+    
     -- Apply game speed
     local adjustedDt = dt * game.gameSpeed
     
@@ -71,43 +104,11 @@ function love.update(dt)
     Building.update(game.buildings, game, adjustedDt)
     Villager.update(game.villagers, game, adjustedDt)
     Road.update(game.roads, game, adjustedDt)
-    
-    -- Update UI
-    UI.update(game, dt) -- UI updates at normal speed
 end
 
 function love.draw()
-    -- Begin camera transform
-    game.camera:beginDraw()
-    
-    -- Draw grid
-    drawGrid()
-    
-    -- Draw entities in proper order
-    drawEntities()
-    
-    -- Draw village placement preview if in building mode
-    if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
-        local mouseX, mouseY = love.mouse.getPosition()
-        local worldX, worldY = game.camera:screenToWorld(mouseX, mouseY)
-        
-        love.graphics.setColor(0, 0.8, 0, 0.5)
-        love.graphics.circle("fill", worldX, worldY, 15)
-        love.graphics.setColor(1, 1, 1, 0.7)
-        love.graphics.print("Click to place village", worldX - 60, worldY - 40)
-    end
-    
-    -- End camera transform
-    game.camera:endDraw()
-    
-    -- Draw UI
+    -- All drawing is now handled by the UI module
     UI.draw(game)
-    
-    -- Draw game speed indicator
-    if game.gameSpeed > Config.TIME_NORMAL_SPEED then
-        love.graphics.setColor(1, 0.8, 0.2)
-        love.graphics.print("FAST FORWARD (x" .. game.gameSpeed .. ")", 10, love.graphics.getHeight() - 40)
-    end
 end
 
 function drawGrid()
@@ -244,16 +245,34 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(key)
+    -- Check if we're in the main menu
+    if UI.showMainMenu then
+        return -- Let UI handle main menu keypresses
+    end
+    
     -- Toggle build menu
     if key == "b" then
         UI.showBuildMenu = not UI.showBuildMenu
     end
     
-    -- Exit village building mode with escape
+    -- Escape key for pause menu if in the game
     if key == "escape" then
-        game.uiMode = Config.UI_MODE_NORMAL
-        game.selectedVillage = nil
-        UI.showBuildMenu = false
+        if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
+            -- If in village building mode, just exit that mode
+            game.uiMode = Config.UI_MODE_NORMAL
+        elseif UI.showBuildMenu then
+            -- If build menu is open, close it
+            UI.showBuildMenu = false
+        elseif UI.roadCreationMode then
+            -- If in road creation mode, exit that mode
+            UI.roadCreationMode = false
+            UI.roadStartVillage = nil
+            UI.roadStartX = nil
+            UI.roadStartY = nil
+        else
+            -- Otherwise toggle pause menu
+            UI.showPauseMenu = not UI.showPauseMenu
+        end
     end
     
     -- Number keys to quickly select villages by index

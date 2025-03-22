@@ -61,7 +61,11 @@ end
 
 function love.load()
     love.graphics.setBackgroundColor(0.2, 0.6, 0.1) -- Green grass background
-    love.window.setTitle("Villageworks")
+    
+    -- Load version information
+    local Version = require("version")
+    love.window.setTitle("Villageworks " .. Version.getVersionString())
+    
     love.window.setMode(800, 600)
     
     -- Initialize camera

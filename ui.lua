@@ -1079,6 +1079,13 @@ function UI.drawMainMenu()
             love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
         end
     end
+    
+    -- Draw version information at the bottom of the screen
+    local Version = require("version")
+    love.graphics.setColor(0.7, 0.7, 0.7, 0.7)
+    love.graphics.setFont(UI.smallFont)
+    local versionString = Version.getFullVersionString()
+    love.graphics.print(versionString, 10, love.graphics.getHeight() - 20)
 end
 
 -- Draw the pause menu

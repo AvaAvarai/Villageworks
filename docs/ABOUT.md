@@ -1,5 +1,11 @@
 # About Villageworks
 
+## Version Information
+
+Current version: 0.1.1 (Released March 22, 2025)
+
+This is an early alpha release with core gameplay mechanics implemented. See the changelog for details on recent updates.
+
 ## Overview
 
 Villageworks is a village building simulation game where you manage resources, build villages, and create road networks to optimize production. As a god-like entity, you direct villagers to construct buildings, gather resources, and expand your civilization.

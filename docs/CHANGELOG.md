@@ -8,12 +8,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.1.1] - 2025-06-22
+
+### Added
+
 - Main menu with New Game, Load Game, documentation, and Exit options
 - Pause menu with Resume, Save Game, and Exit to Main Menu options
 - Documentation system with "How to Play", "About", and "Changelog" sections
 - Game state management with proper pausing and resuming
 - Game reset functionality for starting a new game
-- Improved UI elements and layouts
+- Tile-based rendering system with a complete map implementation
+- Procedural water generation with natural-looking lakes and ponds
+- Improved road creation system using map tiles
+- Map boundary constraints for entities and camera
 
 ### Changed
 
@@ -22,15 +33,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed issue with the close button's click detection
 - Improved building queue controls
 - Centralized drawing logic in the UI module
+- Enhanced camera system with proper edge constraints
 - Removed the 'V' key shortcut for building villages
+- Water generation algorithm improved to create more interesting terrain
+- Buildings cannot be placed on water tiles
+- Road paths cannot go through water tiles
 
 ### Fixed
 
-- Village placement now works properly
+- Village placement now works properly with map boundaries
 - Build menu now shows correctly when a village is selected
 - Camera reset works correctly when starting a new game
+- Camera no longer allows viewing beyond map edges
 - Menu navigation is more intuitive
 - Window layout adapts better to different content
+- Entity spawning checks for valid positions within map bounds
+- Road tiles are properly synchronized with road entities
 
 ## [0.1.0] - Initial Development
 

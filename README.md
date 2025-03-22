@@ -1,27 +1,20 @@
 # Villageworks
 
-Villageworks is a civilization management game where you create and manage a network of thriving settlements.
-
-## Demo Video
-
-Watch our gameplay demonstration to see Villageworks in action:
-
-Villageworks growth of Carthage Demo: [![Villageworks growth of Carthage Demo](docs/screenshot.png)](https://youtu.be/PIl3rFCVl0s)
-
-Click the image above or visit [https://youtu.be/PIl3rFCVl0s](https://youtu.be/PIl3rFCVl0s) to watch the demo.
+A sophisticated civilization management simulation where you establish and nurture a network of interconnected settlements.
 
 ## Overview
 
-Villageworks is a relaxing management simulation where you play as a benevolent deity guiding the growth of villages. Create multiple villages, each with their own historical name, and watch as builders construct houses, resource buildings, and roads to connect your growing civilization.
+Villageworks is a relaxing yet engaging management simulation where you take on the role of a benevolent overseer guiding the development of human civilization. Create multiple villages with historical names, construct buildings, establish resource production chains, and connect your settlements with road networks to build a thriving society.
 
-## Features
+## Key Features
 
-- **Multiple Villages**: Establish numerous settlements, each with a unique historical name
-- **Autonomous Villagers**: Villagers and builders make intelligent decisions based on needs
-- **Resource Management**: Balance food, wood, stone and money resources
-- **Road Networks**: Plan roads between villages and buildings for faster travel and improved efficiency
-- **Organic Growth**: Watch as villages grow naturally based on housing availability
-- **Visual Feedback**: Color-coded villages show housing urgency at a glance
+- **Rich Settlement System**: Create multiple villages, each with a unique historical name
+- **Autonomous AI**: Villagers and builders make intelligent decisions based on current needs and priorities
+- **Resource Economy**: Strategic management of food, wood, stone, and currency
+- **Infrastructure Development**: Plan and build roads to connect villages and enhance resource transport
+- **Dynamic Growth**: Watch as villages develop organically based on resource availability and population needs
+- **Save & Load**: Preserve your progress with a complete game state saving system
+- **Visual Indicators**: Color-coded visual feedback helps quickly identify settlement needs
 
 ## Installation
 
@@ -37,35 +30,37 @@ Villageworks is a relaxing management simulation where you play as a benevolent 
    - **macOS**: Use `open -n -a love "path/to/villageworks"` or drag the folder onto the LÖVE application
    - **Linux**: Use `love /path/to/villageworks`
 
-## How to Play
+## Gameplay Guide
 
 ### Getting Started
 
-1. Click anywhere on the map to place your first village (costs $50 and 20 wood)
-2. Villages automatically spawn builders who will construct buildings
-3. Builders prioritize houses to maintain population growth
-4. Use the build menu (press 'B') to plan roads between villages
+1. From the main menu, select "New Game" to begin
+2. Click anywhere on the map to place your first village (costs $50 and 20 wood)
+3. Villages automatically spawn builders who will construct buildings
+4. Builders prioritize houses to maintain population growth
+5. Use the build menu to construct resource production buildings and plan roads
 
 ### Controls
 
-- **Left Mouse Button**: Place villages, select villages, or interact with UI
-- **Right Mouse Button**: Deselect current village
+- **Left Mouse Button**: Place villages, select villages, interact with UI
+- **Right Mouse Button**: Deselect current village, cancel build mode
 - **Arrow Keys**: Move the camera
 - **Mouse Wheel**: Zoom in/out
 - **B Key**: Open/close build menu
 - **1-9 Keys**: Quickly select villages by index
-- **Escape**: Deselect current village or close menus
+- **Escape**: Access pause menu, close open dialogs
+- **F5**: Quick save your game
 
-## Game Mechanics
+### Game Mechanics
 
-### Villages
+#### Villages
 
 - Each village has a unique historical name
 - Villages spawn builders if food is available
 - Villages track their own population, resources, and building needs
 - Housing needs are shown by village color (green, orange, or red)
 
-### Buildings
+#### Buildings
 
 | Building   | Function | Resources Produced |
 |------------|----------|-------------------|
@@ -75,27 +70,35 @@ Villageworks is a relaxing management simulation where you play as a benevolent 
 | Lumberyard | Harvests wood | Wood |
 | Fishing Hut| Catches fish | Food |
 
-### Resource System
+#### Resource System
 
 - **Food**: Required to spawn builders and maintain population
 - **Wood**: Used for construction of all buildings
 - **Stone**: Used for construction of more advanced buildings
 - **Money**: Earned from resource production and trade
 
-### Roads
+#### Roads
 
 - Roads connect villages to each other and to resource buildings
 - Villagers and builders move faster on roads
 - Roads improve resource transport efficiency
 - Roads must be planned and built by builders
 
-## Development
+#### Saving and Loading
+
+- Quick save with F5
+- Save games with custom names through the pause menu
+- Load saved games from the main menu
+- Maps and all entity data are preserved between saves
+
+## Technical Architecture
 
 ### Game Structure
 
 - Built with the LÖVE framework (Love2D)
 - Modular Lua codebase with entity-based architecture
 - Event-driven update system
+- Complete serialization system for game state persistence
 
 ### Project Structure
 
@@ -106,8 +109,13 @@ villageworks/
 ├── camera.lua       # Camera controls and viewport
 ├── ui.lua           # User interface elements
 ├── main.lua         # Entry point and game loop
+├── map.lua          # Map generation and rendering
+├── lib/
+│   └── serpent.lua  # Serialization library
 ├── data/
-│   └── village_names.lua  # Historical village names
+│   ├── village_names.lua  # Historical village names
+│   └── tiles.png     # Tileset graphics
+├── saves/           # Directory for saved games
 └── entities/
     ├── village.lua    # Village entity
     ├── builder.lua    # Builder entity
@@ -123,7 +131,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgements
 
 - Using the [Serpent](https://github.com/pkulchenko/serpent) serializer available under the MIT License.
+- Using the [Simple Tiles](https://opengameart.org/content/simple-tiles) tileset available for open use.
 
 ---
 
-*Villageworks was created with LÖVE. For any issues or feedback, please submit through GitHub issues.*
+*Created with LÖVE. For issues or feedback, please submit through GitHub issues.*

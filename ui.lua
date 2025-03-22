@@ -35,11 +35,26 @@ function UI.init()
     UI.showPauseMenu = false -- Pause menu initially hidden
     UI.gameRunning = false   -- Game not running until started
     
+    -- Popup system for documentation
+    UI.showPopup = false
+    UI.popupType = nil -- "howToPlay", "about", or "changelog"
+    UI.popupContent = nil
+    UI.popupScroll = 0
+    
+    -- Load documentation content
+    UI.docs = {
+        howToPlay = loadDocumentFile("docs/GAME_GUIDE.md", "Game guide not found."),
+        about = loadDocumentFile("docs/ABOUT.md", "About document not found."),
+        changelog = loadDocumentFile("docs/CHANGELOG.md", "Changelog not found.")
+    }
+    
     -- Main menu options
     UI.mainMenuOptions = {
         "New Game",
         "Load Game",
+        "How to Play",
         "About",
+        "Changelog",
         "Exit"
     }
     
@@ -49,6 +64,25 @@ function UI.init()
         "Save Game",
         "Exit to Main Menu"
     }
+end
+
+-- Helper function to load markdown documents
+function loadDocumentFile(path, defaultMessage)
+    local success, content = pcall(function()
+        local file = io.open(path, "r")
+        if file then
+            local content = file:read("*all")
+            file:close()
+            return content
+        end
+        return defaultMessage
+    end)
+    
+    if success then
+        return content
+    else
+        return "Error loading document: " .. content
+    end
 end
 
 -- Update UI state
@@ -360,11 +394,17 @@ end
 
 -- Handle main menu clicks
 function UI.handleMainMenuClick(game, x, y)
+    -- Check if documentation popup is showing and handle its clicks first
+    if UI.showPopup then
+        return UI.handlePopupClick(x, y)
+    end
+    
+    -- Existing click handling code for main menu
     local menuWidth = 300
     local buttonHeight = 50
     local buttonSpacing = 20
     local menuX = (love.graphics.getWidth() - menuWidth) / 2
-    local startY = love.graphics.getHeight() / 2 - 50
+    local startY = love.graphics.getHeight() / 2 - 100 -- Adjusted starting position to fit all options
     
     for i, option in ipairs(UI.mainMenuOptions) do
         local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
@@ -382,8 +422,20 @@ function UI.handleMainMenuClick(game, x, y)
                 -- TODO: Implement game loading
                 UI.showMessage("Loading game not yet implemented")
                 return true
+            elseif option == "How to Play" then
+                UI.showPopup = true
+                UI.popupType = "howToPlay"
+                UI.popupScroll = 0
+                return true
             elseif option == "About" then
-                UI.showMessage("Village Builder God Game - Created by Villageworks")
+                UI.showPopup = true
+                UI.popupType = "about"
+                UI.popupScroll = 0
+                return true
+            elseif option == "Changelog" then
+                UI.showPopup = true
+                UI.popupType = "changelog"
+                UI.popupScroll = 0
                 return true
             elseif option == "Exit" then
                 love.event.quit()
@@ -434,6 +486,12 @@ function UI.draw(game)
     -- If main menu is showing, draw it and nothing else
     if UI.showMainMenu then
         UI.drawMainMenu()
+        
+        -- If documentation popup is active, draw it on top
+        if UI.showPopup then
+            UI.drawDocumentationPopup()
+        end
+        
         return
     end
     
@@ -886,7 +944,7 @@ function UI.drawMainMenu()
     local buttonHeight = 50
     local buttonSpacing = 20
     local menuX = (love.graphics.getWidth() - menuWidth) / 2
-    local startY = love.graphics.getHeight() / 2 - 50
+    local startY = love.graphics.getHeight() / 2 - 100 -- Adjusted starting position to fit all options
     
     love.graphics.setFont(UI.bigFont)
     
@@ -942,6 +1000,162 @@ function UI.drawPauseMenu()
         local textWidth = UI.bigFont:getWidth(option)
         love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
     end
+end
+
+-- Draw the documentation popup (How to Play, About, or Changelog)
+function UI.drawDocumentationPopup()
+    local width = love.graphics.getWidth() * 0.8
+    local height = love.graphics.getHeight() * 0.8
+    local x = (love.graphics.getWidth() - width) / 2
+    local y = (love.graphics.getHeight() - height) / 2
+    
+    -- Draw popup background
+    love.graphics.setColor(0.1, 0.1, 0.1, 0.95)
+    love.graphics.rectangle("fill", x, y, width, height)
+    love.graphics.setColor(0.5, 0.5, 0.7, 1)
+    love.graphics.rectangle("line", x, y, width, height)
+    
+    -- Draw title based on popup type
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(UI.titleFont)
+    
+    local title = ""
+    local content = ""
+    
+    if UI.popupType == "howToPlay" then
+        title = "How to Play"
+        content = UI.docs.howToPlay
+    elseif UI.popupType == "about" then
+        title = "About"
+        content = UI.docs.about
+    elseif UI.popupType == "changelog" then
+        title = "Changelog"
+        content = UI.docs.changelog
+    end
+    
+    love.graphics.print(title, x + 20, y + 20)
+    
+    -- Draw close button
+    love.graphics.setColor(0.7, 0.3, 0.3)
+    love.graphics.rectangle("fill", x + width - 40, y + 20, 25, 25)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(UI.font)
+    love.graphics.print("X", x + width - 33, y + 25)
+    
+    -- Create a stencil for content area
+    local contentX = x + 20
+    local contentY = y + 70
+    local contentWidth = width - 40
+    local contentHeight = height - 100
+    
+    -- Draw scrollable content
+    love.graphics.stencil(function()
+        love.graphics.rectangle("fill", contentX, contentY, contentWidth, contentHeight)
+    end, "replace", 1)
+    love.graphics.setStencilTest("greater", 0)
+    
+    love.graphics.setColor(0.9, 0.9, 0.9)
+    love.graphics.setFont(UI.font)
+    
+    -- Parse and render Markdown-like content
+    local lineHeight = 20
+    local textY = contentY - UI.popupScroll
+    local lines = {}
+    
+    -- Split the content into lines
+    for line in string.gmatch(content, "[^\r\n]+") do
+        table.insert(lines, line)
+    end
+    
+    for i, line in ipairs(lines) do
+        -- Handle headers
+        if line:match("^#%s+") then
+            love.graphics.setFont(UI.bigFont)
+            love.graphics.setColor(0.8, 0.8, 1)
+            love.graphics.print(line:gsub("^#%s+", ""), contentX, textY)
+            textY = textY + 30
+        elseif line:match("^##%s+") then
+            love.graphics.setFont(UI.bigFont)
+            love.graphics.setColor(0.7, 0.9, 1)
+            love.graphics.print(line:gsub("^##%s+", ""), contentX + 10, textY)
+            textY = textY + 25
+        elseif line:match("^###%s+") then
+            love.graphics.setFont(UI.font)
+            love.graphics.setColor(0.8, 1, 0.8)
+            love.graphics.print(line:gsub("^###%s+", ""), contentX + 20, textY)
+            textY = textY + 20
+        -- Handle bullet points
+        elseif line:match("^%-%s+") or line:match("^%*%s+") then
+            love.graphics.setFont(UI.font)
+            love.graphics.setColor(0.9, 0.9, 0.9)
+            love.graphics.print("• " .. line:gsub("^[%-%*]%s+", ""), contentX + 20, textY)
+            textY = textY + lineHeight
+        -- Handle numbered lists
+        elseif line:match("^%d+%.%s+") then
+            love.graphics.setFont(UI.font)
+            love.graphics.setColor(0.9, 0.9, 0.9)
+            love.graphics.print(line, contentX + 20, textY)
+            textY = textY + lineHeight
+        -- Regular text
+        elseif line ~= "" then
+            love.graphics.setFont(UI.font)
+            love.graphics.setColor(0.9, 0.9, 0.9)
+            love.graphics.print(line, contentX, textY)
+            textY = textY + lineHeight
+        else
+            textY = textY + 10 -- Empty line spacing
+        end
+    end
+    
+    -- Reset stencil
+    love.graphics.setStencilTest()
+    
+    -- Draw scroll indicators if needed
+    local totalHeight = textY + UI.popupScroll - contentY
+    if totalHeight > contentHeight then
+        -- Draw scroll bar
+        local scrollBarHeight = math.max(30, contentHeight * (contentHeight / totalHeight))
+        local scrollBarY = contentY + (UI.popupScroll / (totalHeight - contentHeight)) * (contentHeight - scrollBarHeight)
+        
+        love.graphics.setColor(0.5, 0.5, 0.5, 0.8)
+        love.graphics.rectangle("fill", x + width - 15, contentY, 10, contentHeight)
+        love.graphics.setColor(0.7, 0.7, 0.7, 1)
+        love.graphics.rectangle("fill", x + width - 15, scrollBarY, 10, scrollBarHeight)
+        
+        -- Draw scroll indicators
+        love.graphics.setColor(0.8, 0.8, 0.8, UI.popupScroll > 0 and 1 or 0.3)
+        love.graphics.print("▲", x + width - 25, contentY)
+        love.graphics.setColor(0.8, 0.8, 0.8, UI.popupScroll < totalHeight - contentHeight and 1 or 0.3)
+        love.graphics.print("▼", x + width - 25, contentY + contentHeight - 20)
+    end
+end
+
+-- Handle mouse press events for the documentation popup
+function UI.handlePopupClick(x, y)
+    if not UI.showPopup then
+        return false
+    end
+    
+    local width = love.graphics.getWidth() * 0.8
+    local height = love.graphics.getHeight() * 0.8
+    local popupX = (love.graphics.getWidth() - width) / 2
+    local popupY = (love.graphics.getHeight() - height) / 2
+    
+    -- Check if clicking close button
+    if x >= popupX + width - 40 and x <= popupX + width - 15 and
+       y >= popupY + 20 and y <= popupY + 45 then
+        UI.showPopup = false
+        UI.popupType = nil
+        return true
+    end
+    
+    -- Check if clicking inside the content area (for future interactions)
+    if x >= popupX and x <= popupX + width and
+       y >= popupY and y <= popupY + height then
+        return true -- Capture the click
+    end
+    
+    return false
 end
 
 return UI 

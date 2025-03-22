@@ -235,6 +235,17 @@ function love.mousepressed(x, y, button)
 end
 
 function love.wheelmoved(x, y)
+    -- If documentation popup is showing, handle scrolling
+    if UI.showPopup then
+        local scrollSpeed = 20
+        if y > 0 then -- Scroll up
+            UI.popupScroll = math.max(0, UI.popupScroll - scrollSpeed)
+        elseif y < 0 then -- Scroll down
+            UI.popupScroll = UI.popupScroll + scrollSpeed
+        end
+        return -- Don't process camera zoom when scrolling the popup
+    end
+    
     -- Zoom camera with mouse wheel
     local factor = 1.1
     if y > 0 then
@@ -247,6 +258,13 @@ end
 function love.keypressed(key)
     -- Check if we're in the main menu
     if UI.showMainMenu then
+        -- If documentation popup is showing, ESC should close it
+        if UI.showPopup and key == "escape" then
+            UI.showPopup = false
+            UI.popupType = nil
+            return
+        end
+        
         return -- Let UI handle main menu keypresses
     end
     

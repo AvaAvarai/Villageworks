@@ -58,9 +58,10 @@ function Building:updateHouse(game, dt)
                 
                 -- Create a new villager
                 local VillagerModule = require("entities/villager")
+                local spawnX, spawnY = Utils.randomPositionAround(self.x, self.y, 5, 10, game.map)
                 local newVillager = VillagerModule.new(
-                    self.x + math.random(-10, 10),
-                    self.y + math.random(-10, 10),
+                    spawnX,
+                    spawnY,
                     self.villageId,
                     self
                 )

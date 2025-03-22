@@ -15,7 +15,8 @@ function Builder.new(x, y, villageId)
         state = "idle", -- idle, moving, building, building_road
         targetX = nil,
         targetY = nil,
-        currentRoad = nil
+        currentRoad = nil,
+        pathIndex = 1 -- Current position in the road path
     }, Builder)
     
     return builder
@@ -46,37 +47,62 @@ function Builder.update(builders, game, dt)
         elseif builder.state == "building_road" then
             -- Building a road
             local road = builder.currentRoad
-            if road then
-                -- Calculate movement along the road path
-                local roadLength = road.length
-                local segmentLength = Config.ROAD_BUILD_SPEED * dt
-                local progressIncrement = segmentLength / roadLength
+            if road and road.path and #road.path > 0 then
+                -- Calculate road building speed
+                local buildSpeed = Config.ROAD_BUILD_SPEED * dt
+                local tilesBuilt = 0
+                local maxTilesBuildable = math.ceil(buildSpeed / game.map.tileSize)
                 
-                -- Update road progress
-                road.buildProgress = road.buildProgress + progressIncrement
-                
-                -- Update builder position along the road
-                builder.x = road.startX + (road.endX - road.startX) * road.buildProgress
-                builder.y = road.startY + (road.endY - road.startY) * road.buildProgress
-                
-                -- Check if road is complete
-                if road.buildProgress >= 1 then
-                    road.buildProgress = 1
-                    road.isComplete = true
-                    builder.state = "idle"
-                    builder.currentRoad = nil
-                    builder.progress = 0
+                -- Build tiles along the path
+                while builder.pathIndex <= #road.path and tilesBuilt < maxTilesBuildable do
+                    local tileToBuild = road.path[builder.pathIndex]
+                    
+                    -- Convert tile coordinates to world coordinates for builder position
+                    local tileWorldX, tileWorldY = game.map:tileToWorld(tileToBuild.x, tileToBuild.y)
+                    
+                    -- Move builder to tile position
+                    local arrived = Utils.moveToward(builder, tileWorldX, tileWorldY, Config.BUILDER_SPEED, dt)
+                    
+                    if arrived then
+                        -- Set tile to road
+                        game.map:setTileType(tileToBuild.x, tileToBuild.y, game.map.TILE_ROAD)
+                        
+                        -- Deduct resources for this segment of road
+                        local woodUsed = Config.ROAD_COST_PER_UNIT.wood * game.map.tileSize
+                        local stoneUsed = Config.ROAD_COST_PER_UNIT.stone * game.map.tileSize
+                        
+                        game.resources.wood = math.max(0, game.resources.wood - woodUsed)
+                        game.resources.stone = math.max(0, game.resources.stone - stoneUsed)
+                        
+                        -- Move to next tile
+                        builder.pathIndex = builder.pathIndex + 1
+                        tilesBuilt = tilesBuilt + 1
+                        
+                        -- Update road progress
+                        road.buildProgress = builder.pathIndex / #road.path
+                    else
+                        -- If not arrived at current tile, break the loop
+                        break
+                    end
                 end
                 
-                -- Deduct resources for this segment of road
-                local woodUsed = Config.ROAD_COST_PER_UNIT.wood * segmentLength
-                local stoneUsed = Config.ROAD_COST_PER_UNIT.stone * segmentLength
-                
-                game.resources.wood = math.max(0, game.resources.wood - woodUsed)
-                game.resources.stone = math.max(0, game.resources.stone - stoneUsed)
+                -- Check if road is complete
+                if builder.pathIndex > #road.path then
+                    road.buildProgress = 1
+                    road.isComplete = true
+                    
+                    -- Ensure all road tiles are properly set on the map
+                    road:updateMapTiles(game.map)
+                    
+                    builder.state = "idle"
+                    builder.currentRoad = nil
+                    builder.pathIndex = 1
+                    builder.progress = 0
+                end
             else
-                -- No road assigned, reset state
+                -- No road path assigned, reset state
                 builder.state = "idle"
+                builder.pathIndex = 1
             end
         end
     end
@@ -102,8 +128,23 @@ function Builder:findTask(game)
         local nextBuildingType = UI.getNextQueuedBuilding(village.id)
         
         if nextBuildingType and Utils.canAfford(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost) then
-            -- Find a good location for the building
-            local buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE)
+            -- Find a good location for the building that's not on water
+            local buildX, buildY
+            local attempt = 0
+            local maxAttempts = 20
+            
+            repeat
+                buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE, game.map)
+                attempt = attempt + 1
+            until (game.map:canBuildAt(buildX, buildY) or attempt >= maxAttempts)
+            
+            -- If we couldn't find a buildable spot after max attempts, find closest buildable area
+            if not game.map:canBuildAt(buildX, buildY) then
+                buildX, buildY = game.map:findNearestBuildablePosition(buildX, buildY)
+                
+                -- If still no valid position, give up on this task
+                if not buildX then return end
+            end
             
             -- Create the task
             self.task = {
@@ -148,26 +189,36 @@ function Builder:findTask(game)
         end
         
         if not roadBeingBuilt then
-            -- Create a new road
+            -- Check if there's a valid path for the road
             local endVillageId = nil
             if roadNeed.type == "village" then
                 endVillageId = roadNeed.target.id
             end
             
-            local newRoad = require("entities/road").new(
-                village.x, village.y,
-                roadNeed.x, roadNeed.y,
-                village.id,
-                endVillageId,
-                0 -- 0% progress
-            )
+            -- Use the path from roadNeed if it exists
+            local path = roadNeed.path
             
-            table.insert(game.roads, newRoad)
-            
-            -- Assign this builder to build the road
-            self.currentRoad = newRoad
-            self.state = "building_road"
-            return
+            if path then
+                local newRoad = require("entities/road").new(
+                    village.x, village.y,
+                    roadNeed.x, roadNeed.y,
+                    village.id,
+                    endVillageId,
+                    0, -- 0% progress
+                    path -- Add the path to the road
+                )
+                
+                table.insert(game.roads, newRoad)
+                
+                -- Assign this builder to build the road
+                self.currentRoad = newRoad
+                self.state = "building_road"
+                self.pathIndex = 1
+                
+                -- Remove this road need
+                table.remove(village.needsRoads, 1)
+                return
+            end
         end
     end
     
@@ -264,10 +315,10 @@ function Builder:draw()
     end
 end
 
--- Check if builder is on a road
+-- Check if builder is on a road tile
 function Builder:isOnRoad(game)
-    local nearestRoad, distance = require("entities/road").findNearestRoad(game.roads, self.x, self.y, 10)
-    return nearestRoad ~= nil
+    local tileType = game.map:getTileTypeAtWorld(self.x, self.y)
+    return tileType == game.map.TILE_ROAD
 end
 
 -- Get movement speed for the builder (faster on roads)

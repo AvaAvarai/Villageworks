@@ -25,10 +25,27 @@ function Utils.deductResources(resources, cost)
 end
 
 -- Get a random position within a radius of a point
-function Utils.randomPositionAround(x, y, minRadius, maxRadius)
-    local angle = math.random() * math.pi * 2
-    local distance = math.random(minRadius, maxRadius)
-    return x + math.cos(angle) * distance, y + math.sin(angle) * distance
+function Utils.randomPositionAround(x, y, minRadius, maxRadius, map)
+    -- Try to find a position within the map boundaries
+    local attempts = 0
+    local maxAttempts = 10
+    
+    while attempts < maxAttempts do
+        local angle = math.random() * math.pi * 2
+        local distance = math.random(minRadius, maxRadius)
+        local newX = x + math.cos(angle) * distance
+        local newY = y + math.sin(angle) * distance
+        
+        -- If map is provided, check if position is within map bounds
+        if not map or map:isWithinBounds(newX, newY) then
+            return newX, newY
+        end
+        
+        attempts = attempts + 1
+    end
+    
+    -- If we couldn't find a position within map bounds, return original position
+    return x, y
 end
 
 -- Move an entity toward a target position with a given speed

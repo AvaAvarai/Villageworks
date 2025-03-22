@@ -8,6 +8,7 @@ local Building = require("entities/building")
 local Villager = require("entities/villager")
 local Road = require("entities/road")
 local UI = require("ui")
+local Map = require("map")  -- Add the Map module
 
 -- Game state
 local game = {
@@ -21,7 +22,8 @@ local game = {
     selectedEntity = nil,
     selectedVillage = nil,  -- Track which village is selected
     uiMode = Config.UI_MODE_NORMAL, -- Current UI interaction mode
-    gameSpeed = Config.TIME_NORMAL_SPEED -- Current game speed
+    gameSpeed = Config.TIME_NORMAL_SPEED, -- Current game speed
+    map = nil -- Reference to the map
 }
 
 -- Function to reset the game state
@@ -47,6 +49,14 @@ function game:reset()
         self.camera:setTarget(0, 0)
         self.camera.targetScale = 1
     end
+    
+    -- Regenerate the map
+    if self.map then
+        Map.init()
+    end
+    
+    -- Ensure road tiles are in sync with road entities after reset
+    Road.buildRoadsOnMap(self.roads, self.map)
 end
 
 function love.load()
@@ -57,11 +67,18 @@ function love.load()
     -- Initialize camera
     game.camera = Camera.new()
     
+    -- Initialize map
+    Map.init()
+    game.map = Map
+    
     -- Initialize UI
     UI.init()
     
     -- Set random seed
     math.randomseed(os.time())
+    
+    -- Ensure road tiles are in sync with road entities on initial load
+    Road.buildRoadsOnMap(game.roads, game.map)
 end
 
 function love.update(dt)
@@ -72,6 +89,9 @@ function love.update(dt)
     if UI.showMainMenu or UI.showPauseMenu then
         return
     end
+    
+    -- Ensure road tiles are in sync with road entities
+    Road.buildRoadsOnMap(game.roads, game.map)
     
     -- Apply game speed
     local adjustedDt = dt * game.gameSpeed
@@ -191,23 +211,39 @@ function love.mousepressed(x, y, button)
         
         -- Handle based on UI mode
         if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
-            -- In village building mode, place a new village if we have resources
-            if game.money >= Config.VILLAGE_COST and game.resources.wood >= 20 then
-                game.money = game.money - Config.VILLAGE_COST
-                game.resources.wood = game.resources.wood - 20
-                
-                -- Create new village
-                local newVillage = Village.new(worldX, worldY)
-                table.insert(game.villages, newVillage)
-                
-                -- Select the new village
-                game.selectedVillage = newVillage
-                
-                -- Return to normal mode
-                game.uiMode = Config.UI_MODE_NORMAL
+            -- First check if position is within map bounds
+            if not game.map:isWithinBounds(worldX, worldY) then
+                -- Show error message
+                UI.showMessage("ERROR: Cannot build outside map boundaries! Move closer to the center.")
+                return
+            end
+            
+            -- Check if position is buildable (not water)
+            if game.map:canBuildAt(worldX, worldY) then
+                -- In village building mode, place a new village if we have resources
+                if game.money >= Config.VILLAGE_COST and game.resources.wood >= 20 then
+                    game.money = game.money - Config.VILLAGE_COST
+                    game.resources.wood = game.resources.wood - 20
+                    
+                    -- Set the tile below the village to a road tile
+                    game.map:setTileTypeAtWorld(worldX, worldY, Map.TILE_ROAD)
+                    
+                    -- Create new village
+                    local newVillage = Village.new(worldX, worldY)
+                    table.insert(game.villages, newVillage)
+                    
+                    -- Select the new village
+                    game.selectedVillage = newVillage
+                    
+                    -- Return to normal mode
+                    game.uiMode = Config.UI_MODE_NORMAL
+                else
+                    -- Not enough resources, show message through UI
+                    UI.showMessage("Not enough resources! Need $" .. Config.VILLAGE_COST .. " and " .. 20 .. " wood.")
+                end
             else
-                -- Not enough resources, show message through UI
-                UI.showMessage("Not enough resources! Need $" .. Config.VILLAGE_COST .. " and " .. 20 .. " wood.")
+                -- Cannot build on water
+                UI.showMessage("Cannot build on water! Choose a valid location on land.")
             end
         else
             -- Normal mode - handle selection

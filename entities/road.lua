@@ -4,7 +4,7 @@ local Utils = require("utils")
 local Road = {}
 Road.__index = Road
 
-function Road.new(startX, startY, endX, endY, startVillageId, endVillageId, buildProgress)
+function Road.new(startX, startY, endX, endY, startVillageId, endVillageId, buildProgress, path)
     local road = setmetatable({
         id = Utils.generateId(),
         startX = startX,
@@ -15,7 +15,8 @@ function Road.new(startX, startY, endX, endY, startVillageId, endVillageId, buil
         endVillageId = endVillageId or nil, -- Can be nil if connecting to a building
         buildProgress = buildProgress or 0,
         isComplete = buildProgress and buildProgress >= 1 or false,
-        length = Utils.distance(startX, startY, endX, endY)
+        length = Utils.distance(startX, startY, endX, endY),
+        path = path or nil -- Store the path tiles
     }, Road)
     
     return road
@@ -24,6 +25,24 @@ end
 function Road.update(roads, game, dt)
     -- Roads don't need much updating after they're built
     -- We could add maintenance requirements later
+end
+
+-- Set road tiles on the map based on build progress
+function Road:updateMapTiles(map)
+    if not self.path or not self.isComplete then return end
+    
+    for _, tile in ipairs(self.path) do
+        map:setTileType(tile.x, tile.y, map.TILE_ROAD)
+    end
+end
+
+-- Build roads on the map when a road is created
+function Road.buildRoadsOnMap(roads, map)
+    for _, road in ipairs(roads) do
+        if road.isComplete and road.path then
+            road:updateMapTiles(map)
+        end
+    end
 end
 
 -- Check if a point is near this road (used for movement speed calculations)
@@ -109,33 +128,10 @@ function Road.areConnected(roads, x1, y1, x2, y2)
 end
 
 function Road:draw()
-    -- Draw road based on completion status
-    if self.isComplete then
-        love.graphics.setColor(0.6, 0.6, 0.6)
-        love.graphics.setLineWidth(6)
-        love.graphics.line(self.startX, self.startY, self.endX, self.endY)
-        
-        -- Draw line markings
-        love.graphics.setColor(0.9, 0.9, 0.9)
-        love.graphics.setLineWidth(1)
-        
-        -- Draw dashed line down the center
-        local segments = math.floor(self.length / 20)
-        local dirX = (self.endX - self.startX) / self.length
-        local dirY = (self.endY - self.startY) / self.length
-        
-        for i = 1, segments do
-            local startPos = (i - 1) / segments
-            local endPos = (i - 0.5) / segments
-            
-            local dashStartX = self.startX + dirX * self.length * startPos
-            local dashStartY = self.startY + dirY * self.length * startPos
-            local dashEndX = self.startX + dirX * self.length * endPos
-            local dashEndY = self.startY + dirY * self.length * endPos
-            
-            love.graphics.line(dashStartX, dashStartY, dashEndX, dashEndY)
-        end
-    else
+    -- Roads are now drawn as tiles by the map, so we only need
+    -- to draw incomplete roads or progress indicators
+
+    if not self.isComplete then
         -- Draw incomplete road
         love.graphics.setColor(0.6, 0.6, 0.6, 0.5)
         love.graphics.setLineWidth(3)

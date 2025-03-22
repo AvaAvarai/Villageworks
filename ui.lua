@@ -249,42 +249,57 @@ function UI.handleClick(game, x, y)
             return true
         -- If we're selecting an end village
         elseif UI.hoveredVillage and UI.roadStartVillage and UI.hoveredVillage.id ~= UI.roadStartVillage.id then
-            -- Don't create the road directly - add it to the village's needs
-            -- This makes roads cost resources and need to be built by builders
+            -- Check if we can create a valid road path (not crossing water)
+            local roadPath = game.map:createRoadPath(
+                UI.roadStartVillage.x, 
+                UI.roadStartVillage.y, 
+                UI.hoveredVillage.x, 
+                UI.hoveredVillage.y
+            )
             
-            -- Check if there's already a road with these villages
-            local alreadyHasRoad = false
-            for _, road in ipairs(game.roads) do
-                if (road.startVillageId == UI.roadStartVillage.id and road.endVillageId == UI.hoveredVillage.id) or
-                   (road.startVillageId == UI.hoveredVillage.id and road.endVillageId == UI.roadStartVillage.id) then
-                    alreadyHasRoad = true
-                    break
+            if roadPath then
+                -- Don't create the road directly - add it to the village's needs
+                -- This makes roads cost resources and need to be built by builders
+                
+                -- Check if there's already a road with these villages
+                local alreadyHasRoad = false
+                for _, road in ipairs(game.roads) do
+                    if (road.startVillageId == UI.roadStartVillage.id and road.endVillageId == UI.hoveredVillage.id) or
+                       (road.startVillageId == UI.hoveredVillage.id and road.endVillageId == UI.roadStartVillage.id) then
+                        alreadyHasRoad = true
+                        break
+                    end
                 end
-            end
-            
-            -- Add to village's road needs if no existing road
-            if not alreadyHasRoad then
-                local distance = Utils.distance(UI.roadStartVillage.x, UI.roadStartVillage.y, 
-                                               UI.hoveredVillage.x, UI.hoveredVillage.y)
                 
-                local priority = 10 -- High priority since player requested it
-                
-                table.insert(UI.roadStartVillage.needsRoads, {
-                    type = "village",
-                    target = UI.hoveredVillage,
-                    priority = priority,
-                    x = UI.hoveredVillage.x,
-                    y = UI.hoveredVillage.y
-                })
-                
-                -- Also add to other village's road needs
-                table.insert(UI.hoveredVillage.needsRoads, {
-                    type = "village",
-                    target = UI.roadStartVillage,
-                    priority = priority,
-                    x = UI.roadStartVillage.x,
-                    y = UI.roadStartVillage.y
-                })
+                -- Add to village's road needs if no existing road
+                if not alreadyHasRoad then
+                    local distance = Utils.distance(UI.roadStartVillage.x, UI.roadStartVillage.y, 
+                                                 UI.hoveredVillage.x, UI.hoveredVillage.y)
+                    
+                    local priority = 10 -- High priority since player requested it
+                    
+                    table.insert(UI.roadStartVillage.needsRoads, {
+                        type = "village",
+                        target = UI.hoveredVillage,
+                        priority = priority,
+                        x = UI.hoveredVillage.x,
+                        y = UI.hoveredVillage.y,
+                        path = roadPath -- Store the valid path to follow
+                    })
+                    
+                    -- Also add to other village's road needs
+                    table.insert(UI.hoveredVillage.needsRoads, {
+                        type = "village",
+                        target = UI.roadStartVillage,
+                        priority = priority,
+                        x = UI.roadStartVillage.x,
+                        y = UI.roadStartVillage.y,
+                        path = roadPath -- Store the valid path to follow
+                    })
+                end
+            else
+                -- Road path is not possible due to water
+                UI.showMessage("Cannot build road through water!")
             end
             
             -- Reset road creation mode
@@ -518,8 +533,11 @@ function UI.draw(game)
     -- Draw game world
     game.camera:beginDraw()
     
-    -- Draw grid
-    drawGrid(game)
+    -- Draw the map tiles first
+    game.map:draw(game.camera)
+    
+    -- No need to draw the grid anymore as we have tiles
+    -- drawGrid(game)
     
     -- Draw entities in proper order
     drawEntities(game)
@@ -529,10 +547,39 @@ function UI.draw(game)
         local mouseX, mouseY = love.mouse.getPosition()
         local worldX, worldY = game.camera:screenToWorld(mouseX, mouseY)
         
-        love.graphics.setColor(0, 0.8, 0, 0.5)
-        love.graphics.circle("fill", worldX, worldY, 15)
-        love.graphics.setColor(1, 1, 1, 0.7)
-        love.graphics.print("Click to place village", worldX - 60, worldY - 40)
+        -- Check if position is within map bounds and buildable
+        local isValidPosition = game.map:isWithinBounds(worldX, worldY)
+        local isBuildable = isValidPosition and game.map:canBuildAt(worldX, worldY)
+        
+        if isBuildable then
+            -- Valid placement position
+            love.graphics.setColor(0, 0.8, 0, 0.5)
+            love.graphics.circle("fill", worldX, worldY, 15)
+            love.graphics.setColor(1, 1, 1, 0.7)
+            love.graphics.print("Click to place village", worldX - 60, worldY - 40)
+        else
+            -- Invalid placement position
+            love.graphics.setColor(0.8, 0, 0, 0.5)
+            love.graphics.circle("fill", worldX, worldY, 20) -- Larger circle for emphasis
+            love.graphics.setLineWidth(3)
+            love.graphics.setColor(1, 0, 0, 0.8)
+            love.graphics.circle("line", worldX, worldY, 22) -- Add outline for emphasis
+            love.graphics.setLineWidth(1)
+            
+            -- Draw a more visible warning message
+            love.graphics.setColor(1, 0, 0, 0.9)
+            
+            if not isValidPosition then
+                -- Draw a bigger, more obvious warning text
+                love.graphics.rectangle("fill", worldX - 100, worldY - 45, 200, 30)
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.print("OUTSIDE MAP BOUNDARIES!", worldX - 90, worldY - 40)
+            else
+                love.graphics.rectangle("fill", worldX - 80, worldY - 45, 160, 30)
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.print("Cannot build on water!", worldX - 70, worldY - 40)
+            end
+        end
     end
     
     -- End camera transform
@@ -567,19 +614,37 @@ function UI.draw(game)
     
     -- Draw road creation preview
     if UI.showRoadInfo then
-        -- Draw a preview line from start to mouse cursor
-        local worldX, worldY = game.camera:screenToWorld(love.mouse.getX(), love.mouse.getY())
+        -- Get mouse position
+        local mouseX, mouseY = love.mouse.getPosition()
+        local worldX, worldY = game.camera:screenToWorld(mouseX, mouseY)
         
-        love.graphics.setLineWidth(3)
-        love.graphics.setColor(0.8, 0.8, 0.2, 0.5)
-        love.graphics.line(UI.roadStartX, UI.roadStartY, worldX, worldY)
-        love.graphics.setLineWidth(1)
+        -- Check if the current path would be valid
+        local isValidPath = false
+        if UI.roadStartVillage then
+            local path = game.map:createRoadPath(UI.roadStartX, UI.roadStartY, worldX, worldY)
+            isValidPath = path ~= nil
+            
+            -- Draw the path in different colors based on validity
+            love.graphics.setLineWidth(3)
+            if isValidPath then
+                love.graphics.setColor(0.8, 0.8, 0.2, 0.5) -- Yellow for valid path
+            else
+                love.graphics.setColor(0.8, 0.2, 0.2, 0.5) -- Red for invalid path
+            end
+            love.graphics.line(UI.roadStartX, UI.roadStartY, worldX, worldY)
+            love.graphics.setLineWidth(1)
+        end
         
         -- Draw text instructions
         love.graphics.setColor(1, 1, 1)
         love.graphics.setFont(UI.font)
-        love.graphics.print("Planning Road - Click on another village to connect or ESC to cancel", 
-            love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
+        if isValidPath then
+            love.graphics.print("Planning Road - Click on another village to connect or ESC to cancel", 
+                love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
+        else
+            love.graphics.print("Invalid path - Cannot build roads through water!", 
+                love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
+        end
     end
     
     -- Draw road creation mode indicator

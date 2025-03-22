@@ -51,6 +51,8 @@ local Config = {
     -- Map and rendering
     TILE_SIZE = 40,
     MAX_BUILD_DISTANCE = 150,
+    WORLD_WIDTH = 3000,  -- Width of the game world in pixels
+    WORLD_HEIGHT = 3000, -- Height of the game world in pixels
     
     -- Entity behavior
     BUILDER_SPAWN_TIME = 10,

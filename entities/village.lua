@@ -64,9 +64,10 @@ function Village.update(villages, game, dt)
                 game.resources.food = game.resources.food - 5
                 
                 -- Create new builder
+                local spawnX, spawnY = Utils.randomPositionAround(village.x, village.y, 5, 20, game.map)
                 local builder = require("entities/builder").new(
-                    village.x + math.random(-20, 20),
-                    village.y + math.random(-20, 20),
+                    spawnX,
+                    spawnY,
                     village.id
                 )
                 table.insert(game.builders, builder)

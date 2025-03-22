@@ -20,6 +20,25 @@ function Camera:update(dt)
     self.x = self.x + (self.targetX - self.x) * self.smoothing
     self.y = self.y + (self.targetY - self.y) * self.smoothing
     self.scale = self.scale + (self.targetScale - self.scale) * self.smoothing
+    
+    -- Hard constrain the camera to prevent going beyond the map boundaries
+    local Config = require("config")
+    local screenWidth = love.graphics.getWidth()
+    local screenHeight = love.graphics.getHeight()
+    
+    -- Calculate max camera position based on world size and screen size
+    -- Adjust by one tile size to prevent seeing beyond the edge
+    local tileSize = Config.TILE_SIZE * self.scale
+    local maxX = math.max(0, Config.WORLD_WIDTH * self.scale - screenWidth - tileSize)
+    local maxY = math.max(0, Config.WORLD_HEIGHT * self.scale - screenHeight - tileSize)
+    
+    -- Apply constraints to actual position (not target)
+    self.x = math.max(0, math.min(self.x, maxX))
+    self.y = math.max(0, math.min(self.y, maxY))
+    
+    -- Also constrain targets to prevent continuous movement towards invalid positions
+    self.targetX = math.max(0, math.min(self.targetX, maxX))
+    self.targetY = math.max(0, math.min(self.targetY, maxY))
 end
 
 function Camera:move(dx, dy)
@@ -46,12 +65,12 @@ function Camera:endDraw()
     love.graphics.pop()
 end
 
-function Camera:worldToScreen(worldX, worldY)
-    return worldX * self.scale - self.x, worldY * self.scale - self.y
-end
-
 function Camera:screenToWorld(screenX, screenY)
     return (screenX + self.x) / self.scale, (screenY + self.y) / self.scale
+end
+
+function Camera:worldToScreen(worldX, worldY)
+    return worldX * self.scale - self.x, worldY * self.scale - self.y
 end
 
 return Camera 

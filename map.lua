@@ -4,9 +4,10 @@ local Config = require("config")
 local Map = {}
 
 -- Tile types
-Map.TILE_GRASS = 1
-Map.TILE_ROAD = 2
-Map.TILE_WATER = 3
+Map.TILE_FOREST = 1
+Map.TILE_GRASS = 2
+Map.TILE_ROAD = 3
+Map.TILE_WATER = 4
 
 -- Initialize the map system
 function Map.init()
@@ -15,7 +16,7 @@ function Map.init()
     
     -- Calculate tile dimensions from the tileset image
     local tilesetWidth = Map.tileset:getWidth()
-    local tileCount = 3  -- We have 3 tiles: grass, road, water
+    local tileCount = 4  -- We now have 4 tiles: forest, grass, road(stone), water
     Map.tileSize = tilesetWidth / tileCount
     
     -- Create tile quads for each tile in the tileset
@@ -43,6 +44,9 @@ function Map.init()
     
     -- Generate procedural water (no more than 15% of the map)
     Map:generateWater()
+    
+    -- Generate forests (about 20% of the map)
+    Map:generateForests()
 end
 
 -- Generate water bodies using cellular automata
@@ -202,6 +206,138 @@ function Map:generateWater()
                     Map.tiles[y][x] = Map.TILE_GRASS
                     tilesToConvert = tilesToConvert - 1
                 end
+            end
+        end
+    end
+end
+
+-- Generate forest regions using cellular automata
+function Map:generateForests()
+    -- Adjust these values to control forest generation
+    local forestPercentage = 0.20  -- Target percentage of map covered with forests
+    local seedPercentage = 0.20    -- Initial seeding percentage
+    local forestTileCount = math.floor(Map.width * Map.height * forestPercentage)
+    local currentForestTiles = 0
+    
+    -- Create forest seed clusters for more natural-looking forest patches
+    local function createForestCluster(centerX, centerY, size)
+        for y = math.max(4, centerY - size), math.min(Map.height - 3, centerY + size) do
+            for x = math.max(4, centerX - size), math.min(Map.width - 3, centerX + size) do
+                -- Create rough circular cluster
+                local dx = x - centerX
+                local dy = y - centerY
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist <= size * (0.7 + math.random() * 0.3) then
+                    -- Only place forest on grass tiles (not on water)
+                    if Map.tiles[y][x] == Map.TILE_GRASS then
+                        Map.tiles[y][x] = Map.TILE_FOREST
+                        currentForestTiles = currentForestTiles + 1
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Create several forest patches distributed across the map
+    local numForests = math.random(5, 10)  -- Create 5-10 forest patches
+    for i = 1, numForests do
+        local forestX = math.random(10, Map.width - 10)
+        local forestY = math.random(10, Map.height - 10)
+        local forestSize = math.random(4, 12)  -- Size of forest patch
+        createForestCluster(forestX, forestY, forestSize)
+    end
+    
+    -- Also add random forest seeding for smaller forest patches
+    for y = 1, Map.height do
+        for x = 1, Map.width do
+            -- Leave a border of grass around the edges of the map
+            if x > 5 and y > 5 and x < Map.width - 5 and y < Map.height - 5 then
+                if math.random() < seedPercentage / 4 and Map.tiles[y][x] == Map.TILE_GRASS then
+                    Map.tiles[y][x] = Map.TILE_FOREST
+                    currentForestTiles = currentForestTiles + 1
+                end
+            end
+        end
+    end
+    
+    -- Run cellular automata iterations to create natural-looking forests
+    local iterations = 3  -- More iterations for smoother boundaries
+    for i = 1, iterations do
+        local newTiles = {}
+        for y = 1, Map.height do
+            newTiles[y] = {}
+            for x = 1, Map.width do
+                -- Keep water tiles as they are
+                if Map.tiles[y][x] == Map.TILE_WATER then
+                    newTiles[y][x] = Map.TILE_WATER
+                else
+                    -- Count forest neighbors
+                    local forestNeighbors = 0
+                    local totalNeighbors = 0
+                    
+                    for ny = math.max(1, y-1), math.min(Map.height, y+1) do
+                        for nx = math.max(1, x-1), math.min(Map.width, x+1) do
+                            if not (nx == x and ny == y) then
+                                totalNeighbors = totalNeighbors + 1
+                                if Map.tiles[ny][nx] == Map.TILE_FOREST then
+                                    forestNeighbors = forestNeighbors + 1
+                                end
+                            end
+                        end
+                    end
+                    
+                    -- Apply cellular automata rules
+                    local forestRatio = forestNeighbors / totalNeighbors
+                    
+                    if Map.tiles[y][x] == Map.TILE_FOREST then
+                        -- Forest stays if it has enough forest neighbors
+                        newTiles[y][x] = (forestRatio >= 0.3) and Map.TILE_FOREST or Map.TILE_GRASS
+                    else
+                        -- Grass becomes forest if it has enough forest neighbors
+                        newTiles[y][x] = (forestRatio >= 0.5) and Map.TILE_FOREST or Map.TILE_GRASS
+                    end
+                end
+                
+                -- Keep borders as grass
+                if x <= 3 or y <= 3 or x >= Map.width - 3 or y >= Map.height - 3 then
+                    if newTiles[y][x] == Map.TILE_FOREST then
+                        newTiles[y][x] = Map.TILE_GRASS
+                    end
+                end
+            end
+        end
+        
+        -- Update tiles, but preserve water
+        for y = 1, Map.height do
+            for x = 1, Map.width do
+                if Map.tiles[y][x] == Map.TILE_WATER then
+                    newTiles[y][x] = Map.TILE_WATER
+                end
+            end
+        end
+        
+        Map.tiles = newTiles
+    end
+    
+    -- Ensure we don't exceed the forest percentage limit
+    currentForestTiles = 0
+    for y = 1, Map.height do
+        for x = 1, Map.width do
+            if Map.tiles[y][x] == Map.TILE_FOREST then
+                currentForestTiles = currentForestTiles + 1
+            end
+        end
+    end
+    
+    if currentForestTiles > forestTileCount then
+        local tilesToConvert = currentForestTiles - forestTileCount
+        while tilesToConvert > 0 do
+            local x = math.random(4, Map.width - 4)
+            local y = math.random(4, Map.height - 4)
+            if Map.tiles[y][x] == Map.TILE_FOREST then
+                -- Convert some forest tiles back to grass
+                Map.tiles[y][x] = Map.TILE_GRASS
+                tilesToConvert = tilesToConvert - 1
             end
         end
     end
@@ -540,6 +676,12 @@ function Map:findNearestWaterEdge(startX, startY)
     return closestX, closestY
 end
 
+-- Check if a world position is within map bounds
+function Map:isWithinBounds(worldX, worldY)
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
+    return tileX >= 1 and tileY >= 1 and tileX <= Map.width and tileY <= Map.height
+end
+
 -- Check if a position is clear of any buildings or villages
 function Map:isPositionClearOfBuildings(worldX, worldY, game, buildingSize)
     -- Default building size if not specified
@@ -724,9 +866,15 @@ function Map:findPathAvoidingWater(startX, startY, endX, endY)
                     moveCost = 1.414 -- Diagonal movement costs more
                 end
                 
-                -- If this is a road tile, give it slightly lower cost
-                if Map:getTileType(nx, ny) == Map.TILE_ROAD then
-                    moveCost = moveCost * 0.8 -- Prefer following roads
+                -- Adjust cost based on tile type
+                local tileType = Map:getTileType(nx, ny)
+                
+                -- Forest tiles are more expensive to traverse
+                if tileType == Map.TILE_FOREST then
+                    moveCost = moveCost * 1.5 -- Forest is harder to traverse
+                -- Road tiles are cheaper to traverse
+                elseif tileType == Map.TILE_ROAD then
+                    moveCost = moveCost * 0.7 -- Prefer following roads
                 end
                 
                 local tentativeG = current.g + moveCost
@@ -772,4 +920,153 @@ function Map:pathToWorldCoordinates(path)
     return worldPath
 end
 
-return Map 
+-- Check if a position has forest tiles nearby
+function Map:hasForestNearby(worldX, worldY, radius)
+    if not radius then radius = 4 * Map.tileSize end
+    
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
+    local tileRadius = math.ceil(radius / Map.tileSize)
+    
+    for dy = -tileRadius, tileRadius do
+        for dx = -tileRadius, tileRadius do
+            local checkX, checkY = tileX + dx, tileY + dy
+            
+            -- Check if the position is within bounds
+            if checkX >= 1 and checkY >= 1 and checkX <= Map.width and checkY <= Map.height then
+                -- Calculate distance (circular radius)
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist <= tileRadius and Map:getTileType(checkX, checkY) == Map.TILE_FOREST then
+                    return true
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Find a forest tile near the position
+function Map:findNearestForestTile(worldX, worldY, maxRadius)
+    if not maxRadius then maxRadius = 5 * Map.tileSize end
+    
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
+    local maxTileRadius = math.ceil(maxRadius / Map.tileSize)
+    
+    -- Search in expanding circles
+    for radius = 1, maxTileRadius do
+        -- Check in a spiral pattern (more efficient)
+        for dy = -radius, radius do
+            for dx = -radius, radius do
+                -- Only check tiles at the current radius (roughly circular)
+                if math.abs(dx) + math.abs(dy) >= radius - 1 and 
+                   math.abs(dx) + math.abs(dy) <= radius + 1 then
+                    
+                    local checkX, checkY = tileX + dx, tileY + dy
+                    
+                    -- Check if the position is within bounds
+                    if checkX >= 1 and checkY >= 1 and checkX <= Map.width and checkY <= Map.height then
+                        if Map:getTileType(checkX, checkY) == Map.TILE_FOREST then
+                            -- Found a forest tile, return its world coordinates
+                            local forestX, forestY = Map:tileToWorld(checkX, checkY)
+                            return forestX, forestY, checkX, checkY
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- No forest tile found within the maximum radius
+    return nil, nil, nil, nil
+end
+
+-- Harvest a forest tile (convert it to grass and return wood)
+function Map:harvestForestTile(tileX, tileY)
+    -- Check if the tile is a forest
+    if Map:getTileType(tileX, tileY) == Map.TILE_FOREST then
+        -- Set the tile to grass
+        Map:setTileType(tileX, tileY, Map.TILE_GRASS)
+        
+        -- Return the amount of wood harvested
+        return Config.FOREST_WOOD_YIELD
+    end
+    
+    return 0 -- No wood harvested
+end
+
+-- Harvest a forest tile at world coordinates
+function Map:harvestForestTileAtWorld(worldX, worldY)
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
+    return Map:harvestForestTile(tileX, tileY)
+end
+
+-- Find all forest tiles within a certain radius
+function Map:findForestTilesInRadius(worldX, worldY, radius)
+    local forestTiles = {}
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
+    local tileRadius = math.ceil(radius / Map.tileSize)
+    
+    for dy = -tileRadius, tileRadius do
+        for dx = -tileRadius, tileRadius do
+            local checkX, checkY = tileX + dx, tileY + dy
+            
+            -- Check if the position is within bounds
+            if checkX >= 1 and checkY >= 1 and checkX <= Map.width and checkY <= Map.height then
+                -- Calculate distance (circular radius)
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist <= tileRadius and Map:getTileType(checkX, checkY) == Map.TILE_FOREST then
+                    -- Add to forest tiles list
+                    table.insert(forestTiles, {
+                        x = checkX, 
+                        y = checkY,
+                        worldX = (checkX - 1) * Map.tileSize + Map.tileSize / 2,
+                        worldY = (checkY - 1) * Map.tileSize + Map.tileSize / 2
+                    })
+                end
+            end
+        end
+    end
+    
+    return forestTiles
+end
+
+-- Update function for map - handles forest regrowth
+function Map:update(dt)
+    -- Forest regrowth (slow process)
+    -- We'll randomly select a few tiles to check for regrowth each update
+    -- rather than checking every tile, for performance
+    local tilesToCheck = 20
+    
+    for i = 1, tilesToCheck do  
+        -- Pick a random tile
+        local x = math.random(1, Map.width)
+        local y = math.random(1, Map.height)
+        
+        -- Only grass tiles can regrow into forest
+        if Map.tiles[y][x] == Map.TILE_GRASS then
+            -- Check if there are adjacent forest tiles (required for regrowth)
+            local hasAdjacentForest = false
+            for dy = -1, 1 do
+                for dx = -1, 1 do
+                    if not (dx == 0 and dy == 0) then -- Skip center
+                        local nx, ny = x + dx, y + dy
+                        if nx >= 1 and ny >= 1 and nx <= Map.width and ny <= Map.height then
+                            if Map.tiles[ny][nx] == Map.TILE_FOREST then
+                                hasAdjacentForest = true
+                                break
+                            end
+                        end
+                    end
+                end
+                if hasAdjacentForest then break end
+            end
+            
+            -- If there are adjacent forests, there's a small chance to regrow
+            if hasAdjacentForest and math.random() < Config.FOREST_REGROWTH_CHANCE then
+                Map.tiles[y][x] = Map.TILE_FOREST
+            end
+        end
+    end
+end
+
+return Map

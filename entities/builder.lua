@@ -74,6 +74,10 @@ function Builder.update(builders, game, dt)
                     local arrived = Utils.moveToward(builder, tileWorldX, tileWorldY, Config.BUILDER_SPEED, dt)
                     
                     if arrived then
+                        -- Check if we need to clear forest first
+                        local currentTileType = game.map:getTileType(tileToBuild.x, tileToBuild.y)
+                        local isForest = currentTileType == game.map.TILE_FOREST
+                        
                         -- Set tile to road
                         game.map:setTileType(tileToBuild.x, tileToBuild.y, game.map.TILE_ROAD)
                         
@@ -81,12 +85,22 @@ function Builder.update(builders, game, dt)
                         local woodUsed = Config.ROAD_COST_PER_UNIT.wood * game.map.tileSize
                         local stoneUsed = Config.ROAD_COST_PER_UNIT.stone * game.map.tileSize
                         
+                        -- If clearing forest, get additional wood and spend more time
+                        if isForest then
+                            -- Get wood from clearing forest
+                            game.resources.wood = game.resources.wood + Config.FOREST_WOOD_YIELD
+                            
+                            -- Forest clearing slows down road building
+                            tilesBuilt = tilesBuilt + 0.5 -- Building through forest is slower
+                        else
+                            tilesBuilt = tilesBuilt + 1
+                        end
+                        
                         game.resources.wood = math.max(0, game.resources.wood - woodUsed)
                         game.resources.stone = math.max(0, game.resources.stone - stoneUsed)
                         
                         -- Move to next tile
                         builder.pathIndex = builder.pathIndex + 1
-                        tilesBuilt = tilesBuilt + 1
                         
                         -- Update road progress
                         road.buildProgress = builder.pathIndex / #road.path
@@ -178,34 +192,59 @@ function Builder:findTask(game)
                 local attempt = 0
                 local maxAttempts = 30 -- Increased attempts for finding special locations
                 
-                repeat
-                    buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE, game.map)
-                    attempt = attempt + 1
+                -- Special case for finding lumberyard location near forests
+                if nextBuildingType == "lumberyard" then
+                    buildX, buildY = self:findNearForestPosition(game, village.x, village.y)
                     
-                    -- Check if the position is valid (not on water, not overlapping other buildings)
-                    local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
+                    if buildX and buildY then
+                        -- Found a good spot near forest
+                        local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
                                             game.map:isPositionClearOfBuildings(buildX, buildY, game)
-                    
-                    -- Special check for fishing huts - must be adjacent to water
-                    if nextBuildingType == "fishing_hut" then
-                        if not (isValidPosition and game.map:isAdjacentToWater(buildX, buildY)) then
-                            -- Location not suitable for fishing hut
-                            buildX = nil
-                        end
-                    else
-                        -- For normal buildings, just check standard requirements
                         if not isValidPosition then
-                            -- Location not suitable
-                            buildX = nil
+                            buildX, buildY = nil, nil -- Position not valid for building
                         end
                     end
-                until (buildX ~= nil or attempt >= maxAttempts)
+                end
+                
+                -- If not a lumberyard or couldn't find forest position, use normal placement
+                if not buildX or not buildY then
+                    repeat
+                        buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE, game.map)
+                        attempt = attempt + 1
+                        
+                        -- Check if the position is valid (not on water, not overlapping other buildings)
+                        local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
+                                                game.map:isPositionClearOfBuildings(buildX, buildY, game)
+                        
+                        -- Special check for fishing huts - must be adjacent to water
+                        if nextBuildingType == "fishing_hut" then
+                            if not (isValidPosition and game.map:isAdjacentToWater(buildX, buildY)) then
+                                -- Location not suitable for fishing hut
+                                buildX = nil
+                            end
+                        else
+                            -- For normal buildings, just check standard requirements
+                            if not isValidPosition then
+                                -- Location not suitable
+                                buildX = nil
+                            end
+                        end
+                    until (buildX ~= nil or attempt >= maxAttempts)
+                end
                 
                 -- If we couldn't find a suitable spot after max attempts
                 if buildX == nil then
                     if nextBuildingType == "fishing_hut" then
                         -- For fishing huts, find a spot adjacent to water that doesn't overlap
                         buildX, buildY = self:findNonOverlappingWaterEdge(game, village.x, village.y)
+                    elseif nextBuildingType == "lumberyard" then
+                        -- For lumberyards, try harder to find a spot near forest
+                        buildX, buildY = self:findNonOverlappingForestPosition(game, village.x, village.y)
+                        
+                        -- If still can't find a forest position, use any buildable position
+                        if not buildX then
+                            buildX, buildY = self:findNonOverlappingBuildPosition(game, village.x, village.y)
+                        end
                     else
                         -- For regular buildings, find any suitable spot
                         buildX, buildY = self:findNonOverlappingBuildPosition(game, village.x, village.y)
@@ -651,6 +690,163 @@ function Builder:moveAlongPath(game, dt)
     end
     
     return false -- Not arrived at final destination yet
+end
+
+-- Helper method to check if a position has forests nearby
+function Builder:hasNearbyForests(game, x, y, radius)
+    radius = radius or 100 -- Default check radius
+    local tileRadius = math.ceil(radius / game.map.tileSize)
+    local tileX, tileY = game.map:worldToTile(x, y)
+    
+    -- Check surrounding tiles for forests
+    local forestCount = 0
+    for dy = -tileRadius, tileRadius do
+        for dx = -tileRadius, tileRadius do
+            local checkX, checkY = tileX + dx, tileY + dy
+            if checkX >= 1 and checkY >= 1 and checkX <= game.map.width and checkY <= game.map.height then
+                -- Calculate distance to check for circular radius
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist <= tileRadius then
+                    if game.map:getTileType(checkX, checkY) == game.map.TILE_FOREST then
+                        forestCount = forestCount + 1
+                    end
+                end
+            end
+        end
+    end
+    
+    return forestCount >= 5 -- Need at least 5 forest tiles nearby
+end
+
+-- Find a position near forest for lumberyard
+function Builder:findNearForestPosition(game, startX, startY)
+    local maxSearchRadius = 250 -- How far to search from village
+    local searchStep = 20
+    local bestPosition = nil
+    local bestScore = 0
+    
+    -- Search in expanding circles
+    for radius = 40, maxSearchRadius, searchStep do
+        for angle = 0, 2 * math.pi, math.pi / 8 do
+            local x = startX + math.cos(angle) * radius
+            local y = startY + math.sin(angle) * radius
+            
+            -- Check if this position is valid
+            if game.map:isWithinBounds(x, y) and 
+               game.map:canBuildAt(x, y) and
+               game.map:isPositionClearOfBuildings(x, y, game) then
+                
+                -- Count nearby forest tiles
+                local tileRadius = 4 -- Check in 4 tile radius
+                local tileX, tileY = game.map:worldToTile(x, y)
+                local forestCount = 0
+                
+                for dy = -tileRadius, tileRadius do
+                    for dx = -tileRadius, tileRadius do
+                        local checkX, checkY = tileX + dx, tileY + dy
+                        if checkX >= 1 and checkY >= 1 and 
+                           checkX <= game.map.width and checkY <= game.map.height then
+                            -- Calculate distance for circular radius
+                            local dist = math.sqrt(dx*dx + dy*dy)
+                            if dist <= tileRadius and 
+                               game.map:getTileType(checkX, checkY) == game.map.TILE_FOREST then
+                                forestCount = forestCount + 1
+                            end
+                        end
+                    end
+                end
+                
+                -- Calculate score based on forest count and distance to village
+                local distanceScore = 1 - (radius / maxSearchRadius) -- Closer is better
+                local forestScore = forestCount / 20 -- More forests are better
+                local totalScore = (forestScore * 0.8) + (distanceScore * 0.2) -- Forest count matters more
+                
+                if forestCount >= 3 and totalScore > bestScore then
+                    bestScore = totalScore
+                    bestPosition = {x = x, y = y}
+                end
+            end
+        end
+    end
+    
+    if bestPosition then
+        return bestPosition.x, bestPosition.y
+    end
+    
+    return nil, nil
+end
+
+-- Helper method to find a non-overlapping position near forest for lumberyards
+function Builder:findNonOverlappingForestPosition(game, startX, startY)
+    local maxSearchRadius = 300
+    local searchStep = 15
+    local maxPositionsToCheck = 40
+    local positionsChecked = 0
+    local bestPosition = nil
+    local bestForestCount = 0
+    
+    -- Search in expanding circles
+    for radius = 40, maxSearchRadius, searchStep do
+        -- Try multiple angles at this radius
+        for angle = 0, 2 * math.pi, math.pi / 8 do
+            local x = startX + math.cos(angle) * radius
+            local y = startY + math.sin(angle) * radius
+            
+            -- Check if the location is suitable 
+            local canBuildHere = game.map:isWithinBounds(x, y) and 
+                                 game.map:canBuildAt(x, y) and
+                                 game.map:isPositionClearOfBuildings(x, y, game)
+            
+            if canBuildHere then
+                -- Count forest tiles in vicinity
+                local forestCount = 0
+                local tileRadius = 4 -- Check in 4 tile radius
+                local tileX, tileY = game.map:worldToTile(x, y)
+                
+                for dy = -tileRadius, tileRadius do
+                    for dx = -tileRadius, tileRadius do
+                        local checkX, checkY = tileX + dx, tileY + dy
+                        if checkX >= 1 and checkY >= 1 and 
+                           checkX <= game.map.width and checkY <= game.map.height then
+                            -- Calculate distance for circular radius
+                            local dist = math.sqrt(dx*dx + dy*dy)
+                            if dist <= tileRadius and 
+                               game.map:getTileType(checkX, checkY) == game.map.TILE_FOREST then
+                                forestCount = forestCount + 1
+                            end
+                        end
+                    end
+                end
+                
+                -- Keep track of best position
+                if forestCount > bestForestCount then
+                    bestForestCount = forestCount
+                    bestPosition = {x = x, y = y}
+                end
+                
+                -- If we found a good position with at least 3 forest tiles, return it
+                if forestCount >= 3 then
+                    return x, y
+                end
+            end
+            
+            positionsChecked = positionsChecked + 1
+            if positionsChecked >= maxPositionsToCheck then
+                break
+            end
+        end
+        
+        if positionsChecked >= maxPositionsToCheck then
+            break
+        end
+    end
+    
+    -- Return the best position we found, even if it's not ideal
+    if bestPosition and bestForestCount > 0 then
+        return bestPosition.x, bestPosition.y
+    end
+    
+    return nil, nil  -- No suitable position found
 end
 
 return Builder 

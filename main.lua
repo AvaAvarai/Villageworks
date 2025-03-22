@@ -8,7 +8,7 @@ local Building = require("entities/building")
 local Villager = require("entities/villager")
 local Road = require("entities/road")
 local UI = require("ui")
-local Map = require("map")  -- Add the Map module
+local Map = require("map")
 
 -- Game state
 local game = {
@@ -147,6 +147,7 @@ function love.update(dt)
     Building.update(game.buildings, game, adjustedDt)
     Villager.update(game.villagers, game, adjustedDt)
     Road.update(game.roads, game, adjustedDt)
+    Map.update(adjustedDt) -- Update map for forest regrowth
 end
 
 function love.draw()

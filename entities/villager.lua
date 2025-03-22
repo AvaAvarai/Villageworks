@@ -25,7 +25,11 @@ function Villager.new(x, y, villageId, homeBuilding)
         -- Pathfinding properties
         path = nil,    -- Calculated path to target
         currentPathIndex = 1, -- Current position in the path
-        needsPathRecalculation = false -- Flag to recalculate path
+        needsPathRecalculation = false, -- Flag to recalculate path
+        
+        -- Lumberyard specific properties
+        forestTargetX = nil,
+        forestTargetY = nil
     }, Villager)
     
     return villager
@@ -66,8 +70,33 @@ function Villager.update(villagers, game, dt)
             -- Working at workplace
             villager.workTimer = villager.workTimer + dt
             
-            -- After working for extraction time, transport resources back to village
-            if villager.workTimer >= Config.RESOURCE_EXTRACT_TIME then
+            -- Special handling for lumberyards - they need to go to forest tiles
+            if villager.workplace and villager.workplace.type == "lumberyard" then
+                -- First time working at a lumberyard, find a nearby forest
+                if not villager.forestTargetX and villager.workTimer < 0.5 then
+                    -- Find a forest tile nearby
+                    local forestX, forestY = game.map:findNearestForestTile(
+                        villager.workplace.x, villager.workplace.y, 
+                        Config.LUMBERYARD_HARVEST_RADIUS
+                    )
+                    
+                    if forestX and forestY then
+                        -- Save the forest target
+                        villager.forestTargetX = forestX
+                        villager.forestTargetY = forestY
+                        villager.targetX = forestX
+                        villager.targetY = forestY
+                        villager.state = "going_to_forest" -- New state for moving to forest
+                        villager.path = nil -- Force recalculation
+                        villager.needsPathRecalculation = true
+                    else
+                        -- No forest found, reset work timer but stay in working state
+                        -- Will try again on next update
+                        villager.workTimer = 0
+                    end
+                end
+            elseif villager.workTimer >= Config.RESOURCE_EXTRACT_TIME then
+                -- After working for extraction time, transport resources back to village
                 -- Determine which resource to carry based on workplace
                 local workplace = villager.workplace
                 if workplace and workplace.type ~= "house" then
@@ -107,6 +136,57 @@ function Villager.update(villagers, game, dt)
                     villager.state = "seeking_work"
                 end
             end
+        elseif villager.state == "going_to_forest" then
+            -- Moving to a forest tile to harvest it
+            -- Check if we need to calculate a path
+            if not villager.path or villager.needsPathRecalculation then
+                villager:calculatePath(game, villager.targetX, villager.targetY)
+                villager.needsPathRecalculation = false
+            end
+            
+            -- Move along the calculated path
+            local arrived = villager:moveAlongPath(game, dt)
+            
+            if arrived then
+                -- Arrived at the forest tile, harvest it
+                local tileX, tileY = game.map:worldToTile(villager.targetX, villager.targetY)
+                local harvested = game.map:harvestForestTile(tileX, tileY)
+                
+                if harvested > 0 then
+                    -- Successfully harvested, carry wood back to village
+                    villager.carriedResource = "wood"
+                    villager.resourceAmount = harvested
+                    
+                    -- Clear forest target
+                    villager.forestTargetX = nil
+                    villager.forestTargetY = nil
+                    
+                    -- Set target to home village for resource transport
+                    if villager.homeVillage then
+                        villager.targetX = villager.homeVillage.x
+                        villager.targetY = villager.homeVillage.y
+                        villager.state = "transporting"
+                    else
+                        -- Reset if no valid village
+                        villager.state = "seeking_work"
+                    end
+                else
+                    -- Forest not found or already harvested
+                    -- Go back to workplace and reset
+                    villager.forestTargetX = nil
+                    villager.forestTargetY = nil
+                    
+                    if villager.workplace then
+                        villager.targetX = villager.workplace.x
+                        villager.targetY = villager.workplace.y
+                        villager.state = "going_to_work"
+                    else
+                        villager.state = "seeking_work"
+                    end
+                end
+                
+                villager.path = nil -- Clear the path
+            end
         elseif villager.state == "transporting" then
             -- Check if we need to calculate a path
             if not villager.path or villager.needsPathRecalculation then
@@ -136,13 +216,26 @@ function Villager.update(villagers, game, dt)
                 villager.carriedResource = nil
                 villager.resourceAmount = 0
                 
-                -- Return to workplace
-                if villager.workplace then
+                -- Special handling for lumberyard workers - find new forest
+                if villager.workplace and villager.workplace.type == "lumberyard" then
+                    -- Reset forest target so we find a new one
+                    villager.forestTargetX = nil
+                    villager.forestTargetY = nil
+                    
+                    -- Return to workplace and look for a new forest
                     villager.targetX = villager.workplace.x
                     villager.targetY = villager.workplace.y
                     villager.state = "going_to_work"
+                    villager.workTimer = 0 -- Force immediate forest search when arrive
                 else
-                    villager.state = "seeking_work"
+                    -- Return to workplace for non-lumberyard workers
+                    if villager.workplace then
+                        villager.targetX = villager.workplace.x
+                        villager.targetY = villager.workplace.y
+                        villager.state = "going_to_work"
+                    else
+                        villager.state = "seeking_work"
+                    end
                 end
                 
                 villager.path = nil -- Clear the path
@@ -330,12 +423,19 @@ function Villager:draw()
         going_to_work = {1, 0.5, 0},
         working = {0, 1, 0},
         returning_home = {0, 0, 1},
-        transporting = {1, 1, 0}
+        transporting = {1, 1, 0},
+        going_to_forest = {0.6, 0.4, 0.2} -- Brown for forest harvesting
     }
     
     if stateColors[self.state] then
         love.graphics.setColor(stateColors[self.state])
         love.graphics.circle("fill", self.x, self.y - 6, 2)
+    end
+    
+    -- Show special indicator for lumberyard workers
+    if self.workplace and self.workplace.type == "lumberyard" then
+        love.graphics.setColor(0.5, 0.3, 0.1)
+        love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
     end
 end
 

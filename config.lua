@@ -77,6 +77,11 @@ local Config = {
     ROAD_SPEED_MULTIPLIER = 1.5,    -- Movement speed multiplier when on roads
     ROAD_BUILD_PRIORITY = 0.3,      -- Chance a builder will prioritize road building
     
+    -- Forest settings
+    FOREST_WOOD_YIELD = 3,          -- Wood gained when clearing forest for roads or buildings
+    FOREST_REGROWTH_CHANCE = 0.001, -- Chance per update that a grass tile next to forest becomes forest
+    LUMBERYARD_HARVEST_RADIUS = 200, -- How far lumberyard workers will go to harvest forests
+    
     -- Resource transport
     RESOURCE_CARRY_CAPACITY = 5,    -- How many resources a villager can carry
     RESOURCE_EXTRACT_TIME = 5,      -- Time to extract resources at a resource building

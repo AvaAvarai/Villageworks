@@ -1,6 +1,6 @@
 # Villageworks
 
-A village builder god game where you create and manage a network of thriving settlements.
+Villageworks is a civilization management game where you create and manage a network of thriving settlements.
 
 ![Villageworks](docs/screenshot.png)
 

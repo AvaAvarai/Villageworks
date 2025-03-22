@@ -50,7 +50,8 @@ function game:reset()
 end
 
 function love.load()
-    love.window.setTitle("Village Builder God Game")
+    love.graphics.setBackgroundColor(0.2, 0.6, 0.1) -- Green grass background
+    love.window.setTitle("Villageworks")
     love.window.setMode(800, 600)
     
     -- Initialize camera

@@ -955,7 +955,7 @@ function UI.drawMainMenu()
     -- Draw title
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(UI.titleFont)
-    local title = "Village Builder"
+    local title = "Villageworks"
     local titleWidth = UI.titleFont:getWidth(title)
     love.graphics.print(title, (love.graphics.getWidth() - titleWidth) / 2, 100)
     

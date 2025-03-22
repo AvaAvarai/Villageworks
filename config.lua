@@ -50,7 +50,7 @@ local Config = {
     
     -- Map and rendering
     TILE_SIZE = 40,
-    MAX_BUILD_DISTANCE = 150,
+    MAX_BUILD_DISTANCE = 150, -- Maximum distance from village to build buildings
     WORLD_WIDTH = 3000,  -- Width of the game world in pixels
     WORLD_HEIGHT = 3000, -- Height of the game world in pixels
     BUILDING_SIZE = 24,  -- Size of buildings for overlap detection (diameter)

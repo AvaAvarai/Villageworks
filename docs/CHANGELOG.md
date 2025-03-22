@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Enhanced fishing huts with water adjacency requirement for more realistic gameplay
 - Added resource refunding when buildings cannot be constructed
 - Added building overlap prevention for more realistic placement
+- Added visual building radius overlay when hovering over villages
 
 ### Changed
 
@@ -19,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Made fishing huts require adjacency to water tiles for placement
 - Improved building placement logic with smarter positioning algorithms
 - Enhanced builder AI with improved positioning logic to prevent building overlaps
+- Added MAX_BUILD_DISTANCE configuration parameter to control building placement limits
 
 ### Fixed
 
@@ -27,6 +29,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Implemented proper map state persistence during game loads
 - Fixed fishing hut placement to ensure they're built only next to water tiles
 - Fixed building placement to prevent buildings from overlapping with each other
+- Fixed "Maximum stack depth reached" error by ensuring camera transformations are properly balanced
+- Fixed build menu not appearing when toggled or when clicking on villages
+
+### UI Improvements
+
+- Added transparent overlay showing building radius when hovering over villages
+- Visual feedback helps players understand building placement constraints
 
 ## [0.1.1] - 2025-06-22
 

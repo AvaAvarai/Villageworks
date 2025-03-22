@@ -1229,6 +1229,23 @@ function UI.draw(game)
     -- Draw entities in proper order
     drawEntities(game)
     
+    -- Draw building radius overlay for hovered village
+    if UI.hoveredVillage then
+        -- Draw a transparent circle showing the building radius
+        love.graphics.setColor(0.3, 0.7, 0.9, 0.15) -- Light blue, mostly transparent
+        love.graphics.circle("fill", UI.hoveredVillage.x, UI.hoveredVillage.y, Config.MAX_BUILD_DISTANCE)
+        
+        -- Draw a slightly more visible border
+        love.graphics.setColor(0.3, 0.7, 0.9, 0.3)
+        love.graphics.setLineWidth(2)
+        love.graphics.circle("line", UI.hoveredVillage.x, UI.hoveredVillage.y, Config.MAX_BUILD_DISTANCE)
+        love.graphics.setLineWidth(1)
+        
+        -- Label the radius
+        love.graphics.setColor(1, 1, 1, 0.7)
+        love.graphics.print("Building Radius", UI.hoveredVillage.x - 50, UI.hoveredVillage.y - Config.MAX_BUILD_DISTANCE - 20)
+    end
+
     -- Draw village placement preview if in building mode
     if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
         local mouseX, mouseY = love.mouse.getPosition()
@@ -1271,7 +1288,7 @@ function UI.draw(game)
     
     -- End camera transform
     game.camera:endDraw()
-    
+
     -- Draw normal game UI
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), 40)

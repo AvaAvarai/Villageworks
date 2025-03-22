@@ -97,12 +97,14 @@ function Camera:zoom(factor)
 end
 
 function Camera:beginDraw()
+    -- Push the current graphics state onto the stack
     love.graphics.push()
     love.graphics.translate(-self.x, -self.y)
     love.graphics.scale(self.scale)
 end
 
 function Camera:endDraw()
+    -- Pop the graphics state back from the stack
     love.graphics.pop()
 end
 

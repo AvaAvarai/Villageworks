@@ -27,7 +27,7 @@ local game = {
 }
 
 -- Function to reset the game state
-function game:reset()
+function game:reset(isLoading)
     self.money = Config.STARTING_MONEY
     self.villages = {}
     self.builders = {}
@@ -50,8 +50,8 @@ function game:reset()
         self.camera.targetScale = 1
     end
     
-    -- Regenerate the map
-    if self.map then
+    -- Regenerate the map only if not loading a saved game
+    if self.map and not isLoading then
         Map.init()
     end
     
@@ -292,6 +292,25 @@ function love.wheelmoved(x, y)
         return -- Don't process camera zoom when scrolling the popup
     end
     
+    -- If load dialog is showing, handle scrolling
+    if UI.showLoadDialog then
+        local scrollSpeed = 30
+        if y > 0 then -- Scroll up
+            UI.loadDialogScroll = math.max(0, UI.loadDialogScroll - scrollSpeed)
+        elseif y < 0 then -- Scroll down
+            -- Calculate the maximum scroll possible
+            local fileHeight = 40
+            local fileSpacing = 10
+            local totalHeight = #UI.saveFiles * (fileHeight + fileSpacing)
+            local dialogHeight = love.graphics.getHeight() * 0.7
+            local visibleHeight = dialogHeight - 160
+            
+            -- Apply scroll with limit
+            UI.loadDialogScroll = math.min(math.max(0, totalHeight - visibleHeight), UI.loadDialogScroll + scrollSpeed)
+        end
+        return -- Don't process camera zoom when scrolling the load dialog
+    end
+    
     -- Zoom camera with mouse wheel
     local factor = 1.1
     if y > 0 then
@@ -309,9 +328,23 @@ function love.keypressed(key)
             UI.showPopup = false
             UI.popupType = nil
             return
+        -- If load dialog is showing, ESC should close it
+        elseif UI.showLoadDialog and key == "escape" then
+            UI.showLoadDialog = false
+            return
         end
         
         return -- Let UI handle main menu keypresses
+    end
+    
+    -- Handle save dialog key presses
+    if UI.showSaveDialog then
+        if key == "escape" then
+            UI.showSaveDialog = false
+            UI.showPauseMenu = true
+            return
+        end
+        return
     end
     
     -- Toggle build menu
@@ -337,6 +370,11 @@ function love.keypressed(key)
             -- Otherwise toggle pause menu
             UI.showPauseMenu = not UI.showPauseMenu
         end
+    end
+    
+    -- Quick save with F5
+    if key == "f5" then
+        UI.saveGame(game)
     end
     
     -- Number keys to quickly select villages by index

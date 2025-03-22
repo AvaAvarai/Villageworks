@@ -120,6 +120,10 @@ villageworks/
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Acknowledgements
+
+- Using the [Serpent](https://github.com/pkulchenko/serpent) serializer available under the MIT License.
+
 ---
 
 *Villageworks was created with LÖVE. For any issues or feedback, please submit through GitHub issues.*

@@ -8,9 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added the serpent library for Lua serialization, enabling save/load functionality
+
 ### Changed
 
 ### Fixed
+
+- Fixed a critical issue where loading a saved game would generate a new map instead of restoring the saved map
+- Fixed save/load system to properly serialize and deserialize map data
+- Implemented proper map state persistence during game loads
 
 ## [0.1.1] - 2025-06-22
 

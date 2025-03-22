@@ -52,10 +52,15 @@ function UI.init()
     UI.mainMenuOptions = {
         "New Game",
         "Load Game",
+        "Docs", -- Replace the three separate options with a single "Docs" placeholder
+        "Exit"
+    }
+    
+    -- Documentation submenu options
+    UI.docsOptions = {
         "How to Play",
         "About",
-        "Changelog",
-        "Exit"
+        "Changelog"
     }
     
     -- Pause menu options
@@ -399,17 +404,47 @@ function UI.handleMainMenuClick(game, x, y)
         return UI.handlePopupClick(x, y)
     end
     
-    -- Existing click handling code for main menu
+    -- Handle menu option clicks
     local menuWidth = 300
     local buttonHeight = 50
     local buttonSpacing = 20
     local menuX = (love.graphics.getWidth() - menuWidth) / 2
-    local startY = love.graphics.getHeight() / 2 - 100 -- Adjusted starting position to fit all options
+    local startY = love.graphics.getHeight() / 2 - 100
     
     for i, option in ipairs(UI.mainMenuOptions) do
         local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
         
-        if x >= menuX and x <= menuX + menuWidth and
+        -- Special case for docs buttons
+        if option == "Docs" then
+            -- Check clicks on the three documentation buttons
+            local smallButtonWidth = (menuWidth - 20) / 3
+            
+            for j, docOption in ipairs(UI.docsOptions) do
+                local docButtonX = menuX + (j-1) * (smallButtonWidth + 10)
+                
+                if x >= docButtonX and x <= docButtonX + smallButtonWidth and
+                   y >= buttonY and y <= buttonY + buttonHeight then
+                    
+                    -- Handle documentation option clicks
+                    if docOption == "How to Play" then
+                        UI.showPopup = true
+                        UI.popupType = "howToPlay"
+                        UI.popupScroll = 0
+                        return true
+                    elseif docOption == "About" then
+                        UI.showPopup = true
+                        UI.popupType = "about"
+                        UI.popupScroll = 0
+                        return true
+                    elseif docOption == "Changelog" then
+                        UI.showPopup = true
+                        UI.popupType = "changelog"
+                        UI.popupScroll = 0
+                        return true
+                    end
+                end
+            end
+        elseif x >= menuX and x <= menuX + menuWidth and
            y >= buttonY and y <= buttonY + buttonHeight then
             
             -- Handle option selection
@@ -421,21 +456,6 @@ function UI.handleMainMenuClick(game, x, y)
             elseif option == "Load Game" then
                 -- TODO: Implement game loading
                 UI.showMessage("Loading game not yet implemented")
-                return true
-            elseif option == "How to Play" then
-                UI.showPopup = true
-                UI.popupType = "howToPlay"
-                UI.popupScroll = 0
-                return true
-            elseif option == "About" then
-                UI.showPopup = true
-                UI.popupType = "about"
-                UI.popupScroll = 0
-                return true
-            elseif option == "Changelog" then
-                UI.showPopup = true
-                UI.popupType = "changelog"
-                UI.popupScroll = 0
                 return true
             elseif option == "Exit" then
                 love.event.quit()
@@ -944,23 +964,55 @@ function UI.drawMainMenu()
     local buttonHeight = 50
     local buttonSpacing = 20
     local menuX = (love.graphics.getWidth() - menuWidth) / 2
-    local startY = love.graphics.getHeight() / 2 - 100 -- Adjusted starting position to fit all options
+    local startY = love.graphics.getHeight() / 2 - 100
     
     love.graphics.setFont(UI.bigFont)
     
     for i, option in ipairs(UI.mainMenuOptions) do
         local buttonY = startY + (i-1) * (buttonHeight + buttonSpacing)
         
-        -- Draw button background
-        love.graphics.setColor(0.2, 0.3, 0.4)
-        love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight)
-        love.graphics.setColor(0.5, 0.7, 0.9)
-        love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight)
-        
-        -- Draw button text
-        love.graphics.setColor(1, 1, 1)
-        local textWidth = UI.bigFont:getWidth(option)
-        love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
+        -- Special case for docs row
+        if option == "Docs" then
+            -- Draw three side-by-side buttons for documentation
+            local smallButtonWidth = (menuWidth - 20) / 3 -- 10px spacing between buttons
+            
+            for j, docOption in ipairs(UI.docsOptions) do
+                local docButtonX = menuX + (j-1) * (smallButtonWidth + 10)
+                
+                -- Draw button background
+                if j == 1 then
+                    love.graphics.setColor(0.2, 0.4, 0.5) -- How to Play
+                elseif j == 2 then
+                    love.graphics.setColor(0.3, 0.3, 0.5) -- About
+                else
+                    love.graphics.setColor(0.4, 0.3, 0.4) -- Changelog
+                end
+                
+                love.graphics.rectangle("fill", docButtonX, buttonY, smallButtonWidth, buttonHeight)
+                love.graphics.setColor(0.5, 0.7, 0.9)
+                love.graphics.rectangle("line", docButtonX, buttonY, smallButtonWidth, buttonHeight)
+                
+                -- Draw button text
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.setFont(UI.font) -- Use smaller font for doc buttons
+                local textWidth = UI.font:getWidth(docOption)
+                love.graphics.print(docOption, docButtonX + (smallButtonWidth - textWidth) / 2, buttonY + 17)
+            end
+            
+            -- Reset font size for other buttons
+            love.graphics.setFont(UI.bigFont)
+        else
+            -- Draw regular button background
+            love.graphics.setColor(0.2, 0.3, 0.4)
+            love.graphics.rectangle("fill", menuX, buttonY, menuWidth, buttonHeight)
+            love.graphics.setColor(0.5, 0.7, 0.9)
+            love.graphics.rectangle("line", menuX, buttonY, menuWidth, buttonHeight)
+            
+            -- Draw button text
+            love.graphics.setColor(1, 1, 1)
+            local textWidth = UI.bigFont:getWidth(option)
+            love.graphics.print(option, menuX + (menuWidth - textWidth) / 2, buttonY + 15)
+        end
     end
 end
 

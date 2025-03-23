@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added world size selection menu with Small, Medium, Large, and Huge options
+- Added scrollable interface for world size selection with mouse wheel support
+- Added detailed descriptions and dimensions for each world size option
 - Added mountain terrain features as a natural barrier in the world
 - Added mine buildings that require adjacency to mountains for stone resource extraction
 - Added isAdjacentToMountain and findNearestMountainEdge functions for mine placement
@@ -21,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Updated New Game flow to include world size selection before starting
+- Improved main menu UI with animated buttons and hover effects
+- Made world configuration dynamic based on selected world size
 - Updated tileset to include mountain tiles at position 1, shifting all other tiles forward
 - Units (villagers and builders) now path around water and mountains instead of walking over them
 - Roads can no longer be built through mountains, adding strategic gameplay around terrain

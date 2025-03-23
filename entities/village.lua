@@ -248,13 +248,6 @@ function Village:draw(game)
     love.graphics.setFont(UI.entityNameFont)
     love.graphics.print(self.name, self.x - 20, self.y - 30)
     love.graphics.setFont(currentFont)
-    
-    -- Draw small population indicator always visible
-    local totalPopulation = self.villagerCount
-    love.graphics.setColor(1, 1, 1, 0.9)
-    love.graphics.print(totalPopulation .. ":" .. currentJobSpots, self.x - 10, self.y + 17)
-    
-    -- Remove the hover stats display completely
 end
 
 -- Check if this village is connected to another village via roads

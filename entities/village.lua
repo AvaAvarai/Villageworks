@@ -309,4 +309,66 @@ function Village:draw()
     end
 end
 
+-- Check if this village is connected to another village via roads
+function Village:isConnectedTo(otherVillage, game)
+    -- If villages are the same, they are "connected"
+    if self.id == otherVillage.id then
+        return true
+    end
+    
+    -- Check if there's a completed road between them
+    for _, road in ipairs(game.roads) do
+        if road.isComplete then
+            -- Check if this road connects our two villages
+            if (road.startVillageId == self.id and road.endVillageId == otherVillage.id) or
+               (road.startVillageId == otherVillage.id and road.endVillageId == self.id) then
+                return true
+            end
+        end
+    end
+    
+    -- For roads that connect to arbitrary points rather than villages,
+    -- we need to check if both villages are within building radius of a road endpoint
+    for _, road in ipairs(game.roads) do
+        if road.isComplete then
+            -- Calculate if both villages are within building radius of either road endpoint
+            local startDist1 = Utils.distance(road.startX, road.startY, self.x, self.y)
+            local startDist2 = Utils.distance(road.startX, road.startY, otherVillage.x, otherVillage.y)
+            local endDist1 = Utils.distance(road.endX, road.endY, self.x, self.y)
+            local endDist2 = Utils.distance(road.endX, road.endY, otherVillage.x, otherVillage.y)
+            
+            -- Check if both villages are within building radius of the start point
+            if startDist1 <= Config.MAX_BUILD_DISTANCE and startDist2 <= Config.MAX_BUILD_DISTANCE then
+                return true
+            end
+            
+            -- Check if both villages are within building radius of the end point
+            if endDist1 <= Config.MAX_BUILD_DISTANCE and endDist2 <= Config.MAX_BUILD_DISTANCE then
+                return true
+            end
+            
+            -- Check if one village is near the start and the other is near the end
+            if (startDist1 <= Config.MAX_BUILD_DISTANCE and endDist2 <= Config.MAX_BUILD_DISTANCE) or
+               (startDist2 <= Config.MAX_BUILD_DISTANCE and endDist1 <= Config.MAX_BUILD_DISTANCE) then
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Get all villages that are connected to this one by roads
+function Village:getConnectedVillages(game)
+    local connectedVillages = {}
+    
+    for _, village in ipairs(game.villages) do
+        if village.id ~= self.id and self:isConnectedTo(village, game) then
+            table.insert(connectedVillages, village)
+        end
+    end
+    
+    return connectedVillages
+end
+
 return Village 

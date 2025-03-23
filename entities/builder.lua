@@ -179,12 +179,19 @@ function Builder:findTask(game)
             self.targetY = self.task.y
             self.state = "moving"
             self.progress = 0
+            self.needsPathRecalculation = true
             
             return -- Task found, exit the function
         end
     end
     
-    -- First try to find the village this builder belongs to
+    -- Try to find tasks in connected villages
+    if self:findTaskInConnectedVillages(game) then
+        return -- Task found in connected village
+    end
+    
+    -- Check for road needs
+    -- First find the village this builder belongs to
     local village = nil
     for _, v in ipairs(game.villages) do
         if v.id == self.villageId then
@@ -193,189 +200,7 @@ function Builder:findTask(game)
         end
     end
     
-    if not village then return end
-
-    -- Get the UI module to access building queues
-    local UI = require("ui")
-    
-    -- First check if there are any queued buildings for this village
-    if UI.hasQueuedBuildings(village.id) then
-        local nextBuildingType = UI.getNextQueuedBuilding(village.id)
-        
-        if nextBuildingType and Utils.canAfford(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost) then
-            -- Check if there's a planned position in the queue
-            local plannedPosition = nil
-            local buildQueue = UI.getBuildingQueue(village.id)
-            
-            if buildQueue and buildQueue.plannedPositions then
-                for _, position in ipairs(buildQueue.plannedPositions) do
-                    if position.type == nextBuildingType then
-                        plannedPosition = position
-                        break
-                    end
-                end
-            end
-            
-            local buildX, buildY
-            
-            if plannedPosition then
-                -- Use the pre-planned position if available
-                buildX, buildY = plannedPosition.x, plannedPosition.y
-                
-                -- Verify that the planned position is still valid
-                local isValid = game.map:isWithinBounds(buildX, buildY) and
-                                game.map:canBuildAt(buildX, buildY) and
-                                game.map:isPositionClearOfBuildings(buildX, buildY, game)
-                                
-                -- For fishing huts, also check water adjacency
-                if nextBuildingType == "fishing_hut" then
-                    isValid = isValid and game.map:isAdjacentToWater(buildX, buildY)
-                end
-                
-                -- For mines, check mountain adjacency
-                if nextBuildingType == "mine" then
-                    isValid = isValid and game.map:isAdjacentToMountain(buildX, buildY)
-                end
-                
-                -- If position is no longer valid, ignore it and find a new one
-                if not isValid then
-                    buildX, buildY = nil, nil
-                end
-            end
-            
-            -- If no valid planned position, find a suitable location dynamically
-            if not buildX or not buildY then
-                local attempt = 0
-                local maxAttempts = 30 -- Increased attempts for finding special locations
-                
-                -- Special case for finding lumberyard location near forests
-                if nextBuildingType == "lumberyard" then
-                    buildX, buildY = self:findNearForestPosition(game, village.x, village.y)
-                    
-                    if buildX and buildY then
-                        -- Found a good spot near forest
-                        local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
-                                            game.map:isPositionClearOfBuildings(buildX, buildY, game)
-                        if not isValidPosition then
-                            buildX, buildY = nil, nil -- Position not valid for building
-                        end
-                    end
-                -- Special case for finding mine location near mountains
-                elseif nextBuildingType == "mine" then
-                    buildX, buildY = game.map:findNearestMountainEdge(village.x, village.y)
-                    
-                    if buildX and buildY then
-                        -- Found a good spot near mountain
-                        local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
-                                            game.map:isPositionClearOfBuildings(buildX, buildY, game) and
-                                            game.map:isAdjacentToMountain(buildX, buildY)
-                        if not isValidPosition then
-                            buildX, buildY = nil, nil -- Position not valid for building
-                        end
-                    end
-                end
-                
-                -- If not a special building or couldn't find special position, use normal placement
-                if not buildX or not buildY then
-                    repeat
-                        buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE, game.map)
-                        attempt = attempt + 1
-                        
-                        -- Check if the position is valid (not on water, not overlapping other buildings)
-                        local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
-                                                game.map:isPositionClearOfBuildings(buildX, buildY, game)
-                        
-                        -- Special check for fishing huts - must be adjacent to water
-                        if nextBuildingType == "fishing_hut" then
-                            if not (isValidPosition and game.map:isAdjacentToWater(buildX, buildY)) then
-                                -- Location not suitable for fishing hut
-                                buildX = nil
-                            end
-                        -- Special check for mines - must be adjacent to mountains
-                        elseif nextBuildingType == "mine" then
-                            if not (isValidPosition and game.map:isAdjacentToMountain(buildX, buildY)) then
-                                -- Location not suitable for mine
-                                buildX = nil
-                            end
-                        else
-                            -- For normal buildings, just check standard requirements
-                            if not isValidPosition then
-                                -- Location not suitable
-                                buildX = nil
-                            end
-                        end
-                    until (buildX ~= nil or attempt >= maxAttempts)
-                end
-                
-                -- If we couldn't find a suitable spot after max attempts
-                if buildX == nil then
-                    if nextBuildingType == "fishing_hut" then
-                        -- For fishing huts, find a spot adjacent to water that doesn't overlap
-                        buildX, buildY = self:findNonOverlappingWaterEdge(game, village.x, village.y)
-                    elseif nextBuildingType == "mine" then
-                        -- For mines, find a spot adjacent to mountains that doesn't overlap
-                        buildX, buildY = self:findNonOverlappingMountainEdge(game, village.x, village.y)
-                    elseif nextBuildingType == "lumberyard" then
-                        -- For lumberyards, try harder to find a spot near forest
-                        buildX, buildY = self:findNonOverlappingForestPosition(game, village.x, village.y)
-                        
-                        -- If still can't find a forest position, use any buildable position
-                        if not buildX then
-                            buildX, buildY = self:findNonOverlappingBuildPosition(game, village.x, village.y)
-                        end
-                    else
-                        -- For regular buildings, find any suitable spot
-                        buildX, buildY = self:findNonOverlappingBuildPosition(game, village.x, village.y)
-                    end
-                end
-            end
-            
-            -- If still no valid position, give up on this task
-            if not buildX then 
-                -- Return resources since we can't build
-                Utils.addResources(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost)
-                -- Remove from queue
-                UI.decrementBuildingQueue(village.id, nextBuildingType)
-                -- Show message about failure
-                if nextBuildingType == "fishing_hut" then
-                    UI.showMessage("Cannot build fishing hut: No suitable water-adjacent locations found")
-                elseif nextBuildingType == "mine" then
-                    UI.showMessage("Cannot build mine: No suitable mountain-adjacent locations found")
-                else
-                    UI.showMessage("Cannot build " .. nextBuildingType .. ": No suitable location found")
-                end
-                return 
-            end
-            
-            -- Create the task
-            self.task = {
-                x = buildX,
-                y = buildY,
-                type = nextBuildingType
-            }
-            
-            -- Set building coordinates for the builder to track (for overlap prevention)
-            self.buildingX = buildX
-            self.buildingY = buildY
-            
-            -- Deduct resources
-            Utils.deductResources(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost)
-            
-            -- Set target location and state
-            self.targetX = buildX
-            self.targetY = buildY
-            self.state = "moving"
-            self.progress = 0
-            
-            -- Decrement the building from the queue
-            UI.decrementBuildingQueue(village.id, nextBuildingType)
-            
-            return -- Task found, exit the function
-        end
-    end
-    
-    -- If no queued buildings, check for road needs
-    if #village.needsRoads > 0 and game.resources.wood >= 10 and game.resources.stone >= 5 then
+    if village and #village.needsRoads > 0 and game.resources.wood >= 10 and game.resources.stone >= 5 then
         -- Take the highest priority road need
         local roadNeed = village.needsRoads[1]
         
@@ -394,16 +219,15 @@ function Builder:findTask(game)
         end
         
         if not roadBeingBuilt then
-            -- Check if there's a valid path for the road
-            local endVillageId = nil
-            if roadNeed.type == "village" then
-                endVillageId = roadNeed.target.id
-            end
-            
             -- Use the path from roadNeed if it exists
             local path = roadNeed.path
             
             if path then
+                local endVillageId = nil
+                if roadNeed.type == "village" then
+                    endVillageId = roadNeed.target.id
+                end
+                
                 local newRoad = require("entities/road").new(
                     village.x, village.y,
                     roadNeed.x, roadNeed.y,
@@ -427,22 +251,98 @@ function Builder:findTask(game)
         end
     end
     
+    -- Check for road needs in connected villages
+    local connectedVillages = {}
+    if village then
+        connectedVillages = village:getConnectedVillages(game)
+    end
+    
+    for _, connectedVillage in ipairs(connectedVillages) do
+        if #connectedVillage.needsRoads > 0 and game.resources.wood >= 10 and game.resources.stone >= 5 then
+            -- Take the highest priority road need
+            local roadNeed = connectedVillage.needsRoads[1]
+            
+            -- Check if this road is already being built
+            local roadBeingBuilt = false
+            for _, road in ipairs(game.roads) do
+                if not road.isComplete then
+                    if (road.startVillageId == connectedVillage.id and 
+                        Utils.distance(road.endX, road.endY, roadNeed.x, roadNeed.y) < 10) or
+                       (road.endVillageId == connectedVillage.id and 
+                        Utils.distance(road.startX, road.startY, roadNeed.x, roadNeed.y) < 10) then
+                        roadBeingBuilt = true
+                        break
+                    end
+                end
+            end
+            
+            if not roadBeingBuilt then
+                -- Use the path from roadNeed if it exists
+                local path = roadNeed.path
+                
+                if path then
+                    local endVillageId = nil
+                    if roadNeed.type == "village" then
+                        endVillageId = roadNeed.target.id
+                    end
+                    
+                    local newRoad = require("entities/road").new(
+                        connectedVillage.x, connectedVillage.y,
+                        roadNeed.x, roadNeed.y,
+                        connectedVillage.id,
+                        endVillageId,
+                        0, -- 0% progress
+                        path -- Add the path to the road
+                    )
+                    
+                    table.insert(game.roads, newRoad)
+                    
+                    -- Assign this builder to build the road
+                    self.currentRoad = newRoad
+                    self.state = "building_road"
+                    self.pathIndex = 1
+                    
+                    -- Remove this road need
+                    table.remove(connectedVillage.needsRoads, 1)
+                    return
+                end
+            end
+        end
+    end
+    
     -- Check if there are any unfinished roads that need building
     if #game.roads > 0 then
-        -- Look for incomplete roads
+        -- Look for incomplete roads (both in home village and connected villages)
         local nearestRoad = nil
         local minDistance = math.huge
         
         for _, road in ipairs(game.roads) do
-            if not road.isComplete and road.startVillageId == self.villageId then
-                -- Calculate position along the road based on current progress
-                local roadX = road.startX + (road.endX - road.startX) * road.buildProgress
-                local roadY = road.startY + (road.endY - road.startY) * road.buildProgress
+            if not road.isComplete then
+                local canBuild = false
                 
-                local distance = Utils.distance(self.x, self.y, roadX, roadY)
-                if distance < minDistance then
-                    minDistance = distance
-                    nearestRoad = road
+                -- Check if this road is from this builder's village
+                if road.startVillageId == self.villageId then
+                    canBuild = true
+                else
+                    -- Check if this road is from a connected village
+                    for _, connectedVillage in ipairs(connectedVillages) do
+                        if road.startVillageId == connectedVillage.id then
+                            canBuild = true
+                            break
+                        end
+                    end
+                end
+                
+                if canBuild then
+                    -- Calculate position along the road based on current progress
+                    local roadX = road.startX + (road.endX - road.startX) * road.buildProgress
+                    local roadY = road.startY + (road.endY - road.startY) * road.buildProgress
+                    
+                    local distance = Utils.distance(self.x, self.y, roadX, roadY)
+                    if distance < minDistance then
+                        minDistance = distance
+                        nearestRoad = road
+                    end
                 end
             end
         end
@@ -963,6 +863,130 @@ function Builder:findNonOverlappingMountainEdge(game, startX, startY)
     end
     
     return x, y
+end
+
+-- Look for tasks in connected villages
+function Builder:findTaskInConnectedVillages(game)
+    -- First find the village this builder belongs to
+    local homeVillage = nil
+    for _, v in ipairs(game.villages) do
+        if v.id == self.villageId then
+            homeVillage = v
+            break
+        end
+    end
+    
+    if not homeVillage then return false end
+    
+    -- Get all villages connected to the home village
+    local connectedVillages = homeVillage:getConnectedVillages(game)
+    
+    -- Include the home village itself
+    table.insert(connectedVillages, homeVillage)
+    
+    -- Check each connected village for tasks
+    for _, village in ipairs(connectedVillages) do
+        -- Get the UI module to access building queues
+        local UI = require("ui")
+        
+        -- Check if there are any queued buildings for this village
+        if UI.hasQueuedBuildings(village.id) then
+            local nextBuildingType = UI.getNextQueuedBuilding(village.id)
+            
+            if nextBuildingType and Utils.canAfford(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost) then
+                -- Check if there's a planned position in the queue
+                local plannedPosition = nil
+                local buildQueue = UI.getBuildingQueue(village.id)
+                
+                if buildQueue and buildQueue.plannedPositions then
+                    for _, position in ipairs(buildQueue.plannedPositions) do
+                        if position.type == nextBuildingType then
+                            plannedPosition = position
+                            break
+                        end
+                    end
+                end
+                
+                local buildX, buildY
+                
+                if plannedPosition then
+                    -- Use the pre-planned position if available
+                    buildX, buildY = plannedPosition.x, plannedPosition.y
+                    
+                    -- Verify that the planned position is still valid
+                    local isValid = game.map:isWithinBounds(buildX, buildY) and
+                                    game.map:canBuildAt(buildX, buildY) and
+                                    game.map:isPositionClearOfBuildings(buildX, buildY, game)
+                                    
+                    -- For fishing huts, also check water adjacency
+                    if nextBuildingType == "fishing_hut" then
+                        isValid = isValid and game.map:isAdjacentToWater(buildX, buildY)
+                    end
+                    
+                    -- For mines, check mountain adjacency
+                    if nextBuildingType == "mine" then
+                        isValid = isValid and game.map:isAdjacentToMountain(buildX, buildY)
+                    end
+                    
+                    -- If position is no longer valid, ignore it and find a new one
+                    if not isValid then
+                        buildX, buildY = nil, nil
+                    end
+                end
+                
+                -- If no valid planned position, find a suitable location dynamically
+                if not buildX or not buildY then
+                    -- Find a location near the connected village
+                    buildX, buildY = self:findBuildingLocation(game, nextBuildingType, village)
+                end
+                
+                -- If still no valid position, give up on this task
+                if not buildX then 
+                    -- Return resources since we can't build
+                    Utils.addResources(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost)
+                    -- Remove from queue
+                    UI.decrementBuildingQueue(village.id, nextBuildingType)
+                    
+                    -- Show message about failure
+                    if nextBuildingType == "fishing_hut" then
+                        UI.showMessage("Cannot build fishing hut: No suitable water-adjacent locations found")
+                    elseif nextBuildingType == "mine" then
+                        UI.showMessage("Cannot build mine: No suitable mountain-adjacent locations found")
+                    else
+                        UI.showMessage("Cannot build " .. nextBuildingType .. ": No suitable location found")
+                    end
+                    goto continue -- Try the next village
+                end
+                
+                -- Create the task
+                self.task = {
+                    x = buildX,
+                    y = buildY,
+                    type = nextBuildingType,
+                    villageId = village.id -- Store which village this building belongs to
+                }
+                
+                -- Deduct resources
+                Utils.deductResources(game.resources, Config.BUILDING_TYPES[nextBuildingType].cost)
+                
+                -- Set target location and state
+                self.targetX = buildX
+                self.targetY = buildY
+                self.state = "moving"
+                self.progress = 0
+                self.needsPathRecalculation = true
+                
+                -- Decrement the building from the queue
+                UI.decrementBuildingQueue(village.id, nextBuildingType)
+                
+                return true -- Task found, exit the function
+            end
+        end
+        
+        ::continue::
+    end
+    
+    return false -- No task found in any connected village
 end
 
 return Builder 

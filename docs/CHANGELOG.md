@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Made it so that workers and villages work between road connected villages.
+
 ## [0.1.3] - 2025-03-22
 
 ### Added

@@ -26,7 +26,7 @@ function Village.new(x, y)
         
         -- Population tracking
         villagerCount = 0,   -- Current number of villagers
-        populationCapacity = Config.BASE_POPULATION_CAPACITY,
+        populationCapacity = Config.INITIAL_VILLAGE_POPULATION,
         
         -- Village status display
         showStats = false,   -- Show population stats on hover
@@ -53,31 +53,6 @@ function Village.update(villages, game, dt)
         end
         village.lastPopulation = currentPopulation
         
-        -- Spawn villagers based on food availability and population limits
-        village.villagerTimer = village.villagerTimer - dt
-        if village.villagerTimer <= 0 and village:canAddVillager(game) then
-            village.villagerTimer = Config.BUILDER_SPAWN_TIME -- Reuse the spawn time config
-            
-            if game.resources.food >= 5 then
-                -- Check if we can spawn a villager
-                game.resources.food = game.resources.food - 5
-                
-                -- Create new villager
-                local spawnX, spawnY = Utils.randomPositionAround(village.x, village.y, 5, 20, game.map)
-                local VillagerModule = require("entities/villager")
-                local villager = VillagerModule.new(
-                    spawnX,
-                    spawnY,
-                    village.id,
-                    nil -- No home building yet
-                )
-                table.insert(game.villagers, villager)
-                
-                -- Increment village villager count
-                village.villagerCount = village.villagerCount + 1
-            end
-        end
-        
         -- Update village needs
         village:updateNeeds(game)
         
@@ -100,7 +75,8 @@ end
 function Village:updatePopulationCounts(game)
     -- Reset counts and recalculate
     self.villagerCount = 0
-    self.populationCapacity = Config.BASE_POPULATION_CAPACITY  -- Base capacity
+    -- Start with the base population capacity from config
+    self.populationCapacity = Config.INITIAL_VILLAGE_POPULATION
     self.houseCount = 0
     
     -- Count villagers and calculate capacity from houses

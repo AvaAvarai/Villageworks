@@ -246,15 +246,134 @@ end
 function Map:generateWater()
     -- Adjust these values to control water generation
     local waterPercentage = 0.15  -- Maximum percentage of map covered with water
-    local seedPercentage = 0.15   -- Initial seeding percentage (higher = more water seeds)
     local waterTileCount = math.floor(Map.width * Map.height * waterPercentage)
     local currentWaterTiles = 0
     
-    -- Create water seed clusters for more natural-looking bodies
-    local function createWaterCluster(centerX, centerY, size)
+    -- Create rivers and lakes
+    local function createRiver(startX, startY, length, sinuosity, width)
+        -- Start position
+        local x, y = startX, startY
+        
+        -- Set initial direction - prefer going downward/horizontal for natural rivers
+        local dirX = math.random(-0.5, 0.5)
+        local dirY = math.random(0.5, 1.0)
+        
+        -- Normalize direction vector
+        local dirLen = math.sqrt(dirX*dirX + dirY*dirY)
+        dirX = dirX / dirLen
+        dirY = dirY / dirLen
+        
+        -- Track river path for later widening
+        local riverPath = {}
+        
+        -- River generation
+        for i = 1, length do
+            -- Add some randomness to direction (creates meandering)
+            local angleChange = (math.random() - 0.5) * 0.2 * sinuosity
+            local newDirX = dirX * math.cos(angleChange) - dirY * math.sin(angleChange)
+            local newDirY = dirX * math.sin(angleChange) + dirY * math.cos(angleChange)
+            
+            -- Update direction with some momentum (blend old and new direction)
+            dirX = (dirX * 0.8 + newDirX * 0.2)
+            dirY = (dirY * 0.8 + newDirY * 0.2)
+            
+            -- Normalize direction vector again
+            dirLen = math.sqrt(dirX*dirX + dirY*dirY)
+            dirX = dirX / dirLen
+            dirY = dirY / dirLen
+            
+            -- Move to next position
+            x = x + dirX
+            y = y + dirY
+            
+            -- Round to nearest tile
+            local tileX = math.floor(x + 0.5)
+            local tileY = math.floor(y + 0.5)
+            
+            -- Check map boundaries
+            if tileX < 4 or tileY < 4 or tileX > Map.width - 3 or tileY > Map.height - 3 then
+                break
+            end
+            
+            -- Add to river path
+            table.insert(riverPath, {x = tileX, y = tileY})
+            
+            -- Place water tile if not a mountain
+            if Map.tiles[tileY] and Map.tiles[tileY][tileX] ~= Map.TILE_MOUNTAIN then
+                Map.tiles[tileY][tileX] = Map.TILE_WATER
+                currentWaterTiles = currentWaterTiles + 1
+            end
+            
+            -- Avoid river bending back on itself too much - apply gravity influence
+            -- Rivers tend to flow downhill, so we add a small downward bias
+            dirY = dirY * 0.95 + 0.05
+            
+            -- Normalize again
+            dirLen = math.sqrt(dirX*dirX + dirY*dirY)
+            dirX = dirX / dirLen
+            dirY = dirY / dirLen
+        end
+        
+        -- Widen the river path
+        for _, pos in ipairs(riverPath) do
+            -- River width varies along the path (wider in the middle)
+            local riverWidth = math.random(1, width)
+            
+            -- Create a small circle of water tiles around each point in the path
+            for dy = -riverWidth, riverWidth do
+                for dx = -riverWidth, riverWidth do
+                    -- Use circular shape for the river cross-section
+                    if dx*dx + dy*dy <= riverWidth*riverWidth then
+                        local wx = pos.x + dx
+                        local wy = pos.y + dy
+                        
+                        -- Check boundaries
+                        if wx >= 4 and wy >= 4 and wx <= Map.width - 3 and wy <= Map.height - 3 then
+                            -- Only place water if not mountains
+                            if Map.tiles[wy] and Map.tiles[wy][wx] ~= Map.TILE_MOUNTAIN then
+                                Map.tiles[wy][wx] = Map.TILE_WATER
+                                currentWaterTiles = currentWaterTiles + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Create a lake at the end (river delta or mouth)
+        if #riverPath > 0 then
+            local endPos = riverPath[#riverPath]
+            local lakeSize = math.random(width, width * 2)
+            
+            for dy = -lakeSize, lakeSize do
+                for dx = -lakeSize, lakeSize do
+                    -- Use circular shape for the lake
+                    local dist = math.sqrt(dx*dx + dy*dy)
+                    if dist <= lakeSize * (0.7 + math.random() * 0.3) then
+                        local lx = endPos.x + dx
+                        local ly = endPos.y + dy
+                        
+                        -- Check boundaries
+                        if lx >= 4 and ly >= 4 and lx <= Map.width - 3 and ly <= Map.height - 3 then
+                            -- Only place water if not mountains
+                            if Map.tiles[ly] and Map.tiles[ly][lx] ~= Map.TILE_MOUNTAIN then
+                                Map.tiles[ly][lx] = Map.TILE_WATER
+                                currentWaterTiles = currentWaterTiles + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        return riverPath
+    end
+    
+    -- Create some small lakes
+    local function createLake(centerX, centerY, size)
         for y = math.max(4, centerY - size), math.min(Map.height - 3, centerY + size) do
             for x = math.max(4, centerX - size), math.min(Map.width - 3, centerX + size) do
-                -- Create rough circular cluster
+                -- Create rough circular lake
                 local dx = x - centerX
                 local dy = y - centerY
                 local dist = math.sqrt(dx*dx + dy*dy)
@@ -268,31 +387,138 @@ function Map:generateWater()
         end
     end
     
-    -- Create several water bodies distributed across the map
-    local numLakes = math.random(3, 6)  -- Create 3-6 water bodies
-    for i = 1, numLakes do
-        local lakeX = math.random(10, Map.width - 10)
-        local lakeY = math.random(10, Map.height - 10)
-        local lakeSize = math.random(3, 8)  -- Size of water body
-        createWaterCluster(lakeX, lakeY, lakeSize)
+    -- Create tributary branches from main river
+    local function createTributary(riverPath, mainLength)
+        if #riverPath < 3 then return end
+        
+        -- Choose a point along the river to branch from (avoid endpoints)
+        local branchIndex = math.random(math.floor(#riverPath * 0.2), math.floor(#riverPath * 0.8))
+        local branchPos = riverPath[branchIndex]
+        
+        -- Get direction vector from nearby points to determine perpendicular direction
+        local prevPos = riverPath[math.max(1, branchIndex - 1)]
+        local nextPos = riverPath[math.min(#riverPath, branchIndex + 1)]
+        
+        -- Calculate direction of main river at this point
+        local riverDirX = (nextPos.x - prevPos.x)
+        local riverDirY = (nextPos.y - prevPos.y)
+        
+        -- Normalize
+        local dirLen = math.sqrt(riverDirX*riverDirX + riverDirY*riverDirY)
+        if dirLen > 0 then
+            riverDirX = riverDirX / dirLen
+            riverDirY = riverDirY / dirLen
+        end
+        
+        -- Create perpendicular vector (rotate 90 degrees) - this gives us tributary direction
+        local perpDirX = -riverDirY
+        local perpDirY = riverDirX
+        
+        -- Randomly choose one side or the other to branch
+        if math.random() < 0.5 then
+            perpDirX = -perpDirX
+            perpDirY = -perpDirY
+        end
+        
+        -- Add some randomness to branch direction
+        local angleOffset = (math.random() - 0.5) * math.pi / 4  -- +/- 45 degrees
+        local startDirX = perpDirX * math.cos(angleOffset) - perpDirY * math.sin(angleOffset)
+        local startDirY = perpDirX * math.sin(angleOffset) + perpDirY * math.cos(angleOffset)
+        
+        -- Create tributary starting offset from main river
+        local startX = branchPos.x + startDirX * 2
+        local startY = branchPos.y + startDirY * 2
+        
+        -- Tributary parameters - make them smaller than main river
+        local tributaryLength = math.random(mainLength * 0.3, mainLength * 0.7)
+        local tributarySinuosity = math.random(0.5, 1.5)
+        local tributaryWidth = math.random(1, 2)
+        
+        -- Create the tributary river
+        createRiver(startX, startY, tributaryLength, tributarySinuosity, tributaryWidth)
     end
     
-    -- Also add random water seeding for smaller ponds
-    for y = 1, Map.height do
-        for x = 1, Map.width do
-            -- Leave a border of grass around the edges of the map
-            if x > 5 and y > 5 and x < Map.width - 5 and y < Map.height - 5 then
-                -- Don't place water on mountains
-                if Map.tiles[y][x] ~= Map.TILE_MOUNTAIN and math.random() < seedPercentage / 3 then
-                    Map.tiles[y][x] = Map.TILE_WATER
-                    currentWaterTiles = currentWaterTiles + 1
+    -- Create main rivers
+    local numRivers = math.random(2, 4)  -- Create 2-4 major rivers
+    local riverPaths = {}
+    
+    for i = 1, numRivers do
+        -- Start rivers from near edges or mountains for more realistic appearance
+        local startX, startY
+        
+        -- Try to start rivers from near mountains for realism
+        local foundMountainSource = false
+        for attempt = 1, 10 do
+            local mx = math.random(10, Map.width - 10)
+            local my = math.random(10, Map.height - 10)
+            
+            -- Check if this position is near mountains
+            for dy = -3, 3 do
+                for dx = -3, 3 do
+                    local checkX = mx + dx
+                    local checkY = my + dy
+                    
+                    if checkX >= 1 and checkY >= 1 and 
+                       checkX <= Map.width and checkY <= Map.height and
+                       Map.tiles[checkY][checkX] == Map.TILE_MOUNTAIN then
+                        -- Found a mountain source
+                        startX = mx
+                        startY = my
+                        foundMountainSource = true
+                        break
+                    end
                 end
+                if foundMountainSource then break end
             end
+            if foundMountainSource then break end
+        end
+        
+        -- If no mountain source found, start from map edge
+        if not foundMountainSource then
+            -- Choose which edge to start from
+            local edge = math.random(1, 4)
+            if edge == 1 then -- Top
+                startX = math.random(Map.width * 0.2, Map.width * 0.8)
+                startY = math.random(5, 15)
+            elseif edge == 2 then -- Right
+                startX = Map.width - math.random(5, 15)
+                startY = math.random(Map.height * 0.2, Map.height * 0.8)
+            elseif edge == 3 then -- Bottom
+                startX = math.random(Map.width * 0.2, Map.width * 0.8)
+                startY = Map.height - math.random(5, 15)
+            else -- Left
+                startX = math.random(5, 15)
+                startY = math.random(Map.height * 0.2, Map.height * 0.8)
+            end
+        end
+        
+        -- River parameters
+        local riverLength = math.random(30, 70)  -- Length of river
+        local sinuosity = math.random(0.8, 1.5)  -- How much the river meanders (higher = more)
+        local riverWidth = math.random(2, 4)     -- Width of river
+        
+        -- Create main river
+        local riverPath = createRiver(startX, startY, riverLength, sinuosity, riverWidth)
+        table.insert(riverPaths, {path = riverPath, length = riverLength})
+        
+        -- Create 1-3 tributaries for this river
+        local numTributaries = math.random(1, 3)
+        for j = 1, numTributaries do
+            createTributary(riverPath, riverLength)
         end
     end
     
-    -- Run cellular automata iterations to create natural-looking water bodies
-    local iterations = 4  -- More iterations for smoother boundaries
+    -- Create a few small lakes
+    local numLakes = math.random(2, 5)
+    for i = 1, numLakes do
+        local lakeX = math.random(10, Map.width - 10)
+        local lakeY = math.random(10, Map.height - 10)
+        local lakeSize = math.random(2, 5)
+        createLake(lakeX, lakeY, lakeSize)
+    end
+    
+    -- Run cellular automata iterations to smooth water bodies
+    local iterations = 3
     for i = 1, iterations do
         local newTiles = {}
         for y = 1, Map.height do
@@ -308,35 +534,30 @@ function Map:generateWater()
                 local waterNeighbors = 0
                 local totalNeighbors = 0
                 
-                for ny = math.max(1, y-2), math.min(Map.height, y+2) do
-                    for nx = math.max(1, x-2), math.min(Map.width, x+2) do
-                        if math.abs(nx-x) <= 2 and math.abs(ny-y) <= 2 then
+                for ny = math.max(1, y-1), math.min(Map.height, y+1) do
+                    for nx = math.max(1, x-1), math.min(Map.width, x+1) do
+                        if not (nx == x and ny == y) then
                             -- Don't count mountain tiles in the water calculation
                             if Map.tiles[ny][nx] ~= Map.TILE_MOUNTAIN then
                                 totalNeighbors = totalNeighbors + 1
                                 if Map.tiles[ny][nx] == Map.TILE_WATER then
-                                    -- Closer neighbors have more influence
-                                    if math.abs(nx-x) <= 1 and math.abs(ny-y) <= 1 then
-                                        waterNeighbors = waterNeighbors + 2
-                                    else
-                                        waterNeighbors = waterNeighbors + 1
-                                    end
+                                    waterNeighbors = waterNeighbors + 1
                                 end
                             end
                         end
                     end
                 end
                 
-                -- Apply cellular automata rules with more nuanced thresholds
+                -- Apply cellular automata rules to smooth river edges
                 if totalNeighbors > 0 then
-                    local waterRatio = waterNeighbors / (totalNeighbors * 1.5)  -- Weight more toward water
+                    local waterRatio = waterNeighbors / totalNeighbors
                     
                     if Map.tiles[y][x] == Map.TILE_WATER then
-                        -- Water stays if it has enough water neighbors
-                        newTiles[y][x] = (waterRatio >= 0.35) and Map.TILE_WATER or Map.TILE_GRASS
+                        -- Water stays water if it has enough water neighbors
+                        newTiles[y][x] = (waterRatio >= 0.3) and Map.TILE_WATER or Map.TILE_GRASS
                     else
-                        -- Grass becomes water if it has enough water neighbors
-                        newTiles[y][x] = (waterRatio >= 0.45) and Map.TILE_WATER or Map.TILE_GRASS
+                        -- Grass becomes water if it has many water neighbors (fill small gaps)
+                        newTiles[y][x] = (waterRatio >= 0.6) and Map.TILE_WATER or Map.TILE_GRASS
                     end
                 else
                     newTiles[y][x] = Map.tiles[y][x]
@@ -353,7 +574,7 @@ function Map:generateWater()
         Map.tiles = newTiles
     end
     
-    -- Enforce minimum amount of water - add lakes if we don't have enough
+    -- Count current water tiles
     currentWaterTiles = 0
     for y = 1, Map.height do
         for x = 1, Map.width do
@@ -363,16 +584,18 @@ function Map:generateWater()
         end
     end
     
-    -- If we have too little water, add more lakes
+    -- Ensure we have enough water - if not, add more lakes or extend rivers
     local minWaterTiles = math.floor(Map.width * Map.height * 0.08)  -- Minimum 8% water
     if currentWaterTiles < minWaterTiles then
+        print("Adding more water to reach minimum percentage")
+        -- Add lakes until we reach the target
         while currentWaterTiles < minWaterTiles do
             local lakeX = math.random(10, Map.width - 10)
             local lakeY = math.random(10, Map.height - 10)
             local lakeSize = math.random(3, 6)
             
-            -- Add a new lake
-            createWaterCluster(lakeX, lakeY, lakeSize)
+            -- Create a lake
+            createLake(lakeX, lakeY, lakeSize)
             
             -- Recount water tiles
             currentWaterTiles = 0
@@ -387,22 +610,15 @@ function Map:generateWater()
     end
     
     -- Ensure we don't exceed the water percentage limit
-    currentWaterTiles = 0
-    for y = 1, Map.height do
-        for x = 1, Map.width do
-            if Map.tiles[y][x] == Map.TILE_WATER then
-                currentWaterTiles = currentWaterTiles + 1
-            end
-        end
-    end
-    
     if currentWaterTiles > waterTileCount then
         local tilesToConvert = currentWaterTiles - waterTileCount
+        print("Removing " .. tilesToConvert .. " excess water tiles")
+        
         while tilesToConvert > 0 do
             local x = math.random(4, Map.width - 4)
             local y = math.random(4, Map.height - 4)
             if Map.tiles[y][x] == Map.TILE_WATER then
-                -- Only remove water tiles that don't create weird shapes
+                -- Only remove water tiles that won't break river continuity
                 local waterNeighbors = 0
                 for ny = math.max(1, y-1), math.min(Map.height, y+1) do
                     for nx = math.max(1, x-1), math.min(Map.width, x+1) do
@@ -412,14 +628,18 @@ function Map:generateWater()
                     end
                 end
                 
-                -- Only remove water if it won't create weird patterns
-                if waterNeighbors <= 5 then
+                -- Only remove if it won't create weird patterns or break rivers
+                -- Preserve tiles with lots of water neighbors (river centers)
+                if waterNeighbors <= 4 then
                     Map.tiles[y][x] = Map.TILE_GRASS
                     tilesToConvert = tilesToConvert - 1
                 end
             end
         end
     end
+    
+    print("Generated " .. currentWaterTiles .. " water tiles (" .. 
+          math.floor(currentWaterTiles / (Map.width * Map.height) * 100) .. "% of map)")
 end
 
 -- Generate forest regions using cellular automata

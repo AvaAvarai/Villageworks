@@ -108,7 +108,7 @@ function Building:removeWorker(villager)
     return false
 end
 
-function Building:draw()
+function Building:draw(UI)
     -- Set color based on building type
     if self.type == "farm" then
         love.graphics.setColor(0.2, 0.8, 0.2)
@@ -125,25 +125,30 @@ function Building:draw()
     -- Draw building
     love.graphics.rectangle("fill", self.x - 10, self.y - 10, 20, 20)
     
-    -- Draw text info
-    love.graphics.setColor(1, 1, 1)
-    -- Use the entity name font for the building type
-    local currentFont = love.graphics.getFont()
-    love.graphics.setFont(UI.entityNameFont)
-    love.graphics.print(self.type, self.x - 10, self.y - 30)
-    love.graphics.setFont(currentFont)
+    -- Check if we should show information
+    local showInfo = UI.infoKeyDown or (UI.hoveredBuilding and UI.hoveredBuilding.id == self.id)
     
-    -- Display workers or villagers
-    if self.type ~= "house" then
-        love.graphics.print(#self.workers .. "/" .. self.workersNeeded, self.x - 10, self.y + 15)
-    else
-        love.graphics.print(self.currentVillagers .. "/" .. self.villagerCapacity, self.x - 10, self.y + 15)
+    -- Only show text info if building is hovered or info key is down
+    if showInfo then
+        love.graphics.setColor(1, 1, 1)
+        -- Use the entity name font for the building type
+        local currentFont = love.graphics.getFont()
+        love.graphics.setFont(UI.entityNameFont)
+        love.graphics.print(self.type, self.x - 10, self.y - 30)
+        love.graphics.setFont(currentFont)
         
-        -- If villager is being produced, show timer
-        if self.currentVillagers < self.villagerCapacity then
-            local percentDone = 1 - (self.villagerTimer / Config.BUILDING_TYPES.house.spawnTime)
-            love.graphics.setColor(0.2, 0.7, 0.9, 0.7)
-            love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
+        -- Display workers or villagers
+        if self.type ~= "house" then
+            love.graphics.print(#self.workers .. "/" .. self.workersNeeded, self.x - 10, self.y + 15)
+        else
+            love.graphics.print(self.currentVillagers .. "/" .. self.villagerCapacity, self.x - 10, self.y + 15)
+            
+            -- If villager is being produced, show timer
+            if self.currentVillagers < self.villagerCapacity then
+                local percentDone = 1 - (self.villagerTimer / Config.BUILDING_TYPES.house.spawnTime)
+                love.graphics.setColor(0.2, 0.7, 0.9, 0.7)
+                love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
+            end
         end
     end
 end

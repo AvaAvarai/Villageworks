@@ -200,7 +200,7 @@ function drawEntities()
     
     -- Draw all buildings
     for _, building in ipairs(game.buildings) do
-        building:draw()
+        building:draw(UI)
         
         -- Highlight buildings of selected village
         if game.selectedVillage and building.villageId == game.selectedVillage.id then
@@ -388,4 +388,10 @@ function love.resize(w, h)
         game.camera.targetX = worldCenterX * game.camera.scale - newCenterX
         game.camera.targetY = worldCenterY * game.camera.scale - newCenterY
     end
+end
+
+-- Handle key release events
+function love.keyreleased(key)
+    -- Pass key release events to UI
+    UI.keyreleased(key)
 end

@@ -34,6 +34,7 @@ function UI.init()
     UI.roadStartVillage = nil
     UI.roadStartX = nil
     UI.roadStartY = nil
+    UI.infoKeyDown = false  -- Track when the 'i' key is held down
     
     -- Hover state for menu buttons
     UI.hoveredButton = nil
@@ -771,7 +772,7 @@ function UI.draw(game)
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Press B for build menu. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom. ESC to pause.", 
+    love.graphics.print("Press B for build menu. Hold I to show building info. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom. ESC to pause.", 
                         10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
@@ -832,7 +833,7 @@ function drawEntities(game)
     
     -- Draw all buildings
     for _, building in ipairs(game.buildings) do
-        building:draw()
+        building:draw(UI)
         
         -- Highlight buildings of selected village
         if game.selectedVillage and building.villageId == game.selectedVillage.id then
@@ -1441,7 +1442,7 @@ function UI.textinput(text)
     SaveLoad.textinput(text)
 end
 
--- Handle key presses
+-- Handle key press events
 function UI.keypressed(game, key)
     -- Handle documentation popup keypresses first
     if Documentation.showPopup then
@@ -1452,6 +1453,17 @@ function UI.keypressed(game, key)
 
     -- Pass key press events to SaveLoad module
     SaveLoad.keypressed(game, key)
+
+    if key == "i" then
+        UI.infoKeyDown = true
+    end
+end
+
+-- Handle key release events
+function UI.keyreleased(key)
+    if key == "i" then
+        UI.infoKeyDown = false
+    end
 end
 
 -- Handle mouse wheel events

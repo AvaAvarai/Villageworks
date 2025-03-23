@@ -72,32 +72,80 @@ function Map:generateMountains()
     local mountainTileCount = math.floor(Map.width * Map.height * mountainPercentage)
     local currentMountainTiles = 0
     
-    -- Create mountain seed clusters
-    local function createMountainCluster(centerX, centerY, size)
-        for y = math.max(4, centerY - size), math.min(Map.height - 3, centerY + size) do
-            for x = math.max(4, centerX - size), math.min(Map.width - 3, centerX + size) do
-                -- Create rough circular cluster
-                local dx = x - centerX
-                local dy = y - centerY
-                local dist = math.sqrt(dx*dx + dy*dy)
-                if dist <= size * (0.7 + math.random() * 0.3) then
-                    Map.tiles[y][x] = Map.TILE_MOUNTAIN
-                    currentMountainTiles = currentMountainTiles + 1
+    -- Create mountain ridges for more realistic-looking ranges
+    local function createMountainRidge(startX, startY, length, width, angle)
+        -- Calculate direction vector based on angle
+        local dirX = math.cos(angle)
+        local dirY = math.sin(angle)
+        
+        -- Create mountain ridge along the direction
+        for i = 0, length do
+            -- Calculate center position for this segment of the ridge
+            local centerX = math.floor(startX + i * dirX)
+            local centerY = math.floor(startY + i * dirY)
+            
+            -- Create width of the ridge perpendicular to direction
+            local perpX = -dirY
+            local perpY = dirX
+            
+            -- Add random variation to width to make it more natural
+            local thisWidth = width * (0.7 + math.random() * 0.6)
+            
+            -- Create ridge cross-section
+            for w = -thisWidth, thisWidth do
+                local x = math.floor(centerX + w * perpX)
+                local y = math.floor(centerY + w * perpY)
+                
+                -- Check map boundaries
+                if x >= 4 and y >= 4 and x <= Map.width - 3 and y <= Map.height - 3 then
+                    -- Add height variation - higher in the middle, lower at edges
+                    local heightFactor = 1 - (math.abs(w) / thisWidth) * 0.8
+                    
+                    -- Only place if random value is below height factor (creates tapering)
+                    if math.random() < heightFactor then
+                        Map.tiles[y][x] = Map.TILE_MOUNTAIN
+                        currentMountainTiles = currentMountainTiles + 1
+                    end
                 end
             end
         end
     end
     
-    -- Create several larger mountain ranges distributed across the map
-    local numMountainRanges = math.random(4, 6)  -- Create 4-6 mountain ranges
-    for i = 1, numMountainRanges do
-        local mtX = math.random(10, Map.width - 10)
-        local mtY = math.random(10, Map.height - 10)
-        local mtSize = math.random(5, 10)  -- Increased size of mountain ranges
-        createMountainCluster(mtX, mtY, mtSize)
+    -- Create branching mountain range (with main ridge and smaller side ridges)
+    local function createMountainRange(startX, startY, mainLength, mainAngle)
+        -- Create the main ridge
+        local mainWidth = math.random(2, 5)
+        createMountainRidge(startX, startY, mainLength, mainWidth, mainAngle)
+        
+        -- Create some branches/side ridges
+        local numBranches = math.random(2, 5)
+        for i = 1, numBranches do
+            -- Branch starts somewhere along the main ridge
+            local branchPos = math.random(mainLength * 0.2, mainLength * 0.8)
+            local branchX = math.floor(startX + branchPos * math.cos(mainAngle))
+            local branchY = math.floor(startY + branchPos * math.sin(mainAngle))
+            
+            -- Branch angle differs from main angle
+            local branchAngle = mainAngle + (math.random() * 0.8 - 0.4) * math.pi
+            local branchLength = math.random(mainLength * 0.3, mainLength * 0.7)
+            local branchWidth = math.max(1, mainWidth * 0.6)
+            
+            createMountainRidge(branchX, branchY, branchLength, branchWidth, branchAngle)
+        end
     end
     
-    print("Created " .. numMountainRanges .. " initial mountain ranges")
+    -- Create several mountain ranges distributed across the map
+    local numMountainRanges = math.random(3, 5)  -- Create 3-5 mountain ranges
+    for i = 1, numMountainRanges do
+        local startX = math.random(20, Map.width - 20)
+        local startY = math.random(20, Map.height - 20)
+        local angle = math.random() * math.pi * 2  -- Random direction
+        local length = math.random(20, 50)  -- Longer ranges
+        
+        createMountainRange(startX, startY, length, angle)
+    end
+    
+    print("Created " .. numMountainRanges .. " mountain ranges")
     
     -- Run cellular automata iterations to create natural-looking mountain shapes
     local iterations = 3
@@ -159,7 +207,7 @@ function Map:generateMountains()
     print("Generated " .. currentMountainTiles .. " mountain tiles before adjustment")
     
     -- Ensure we don't exceed the mountain percentage limit
-    if currentMountainTiles > mountainTileCount then
+    if currentMountainTiles > mountainTileCount * 1.5 then
         local tilesToConvert = currentMountainTiles - mountainTileCount
         while tilesToConvert > 0 do
             local x = math.random(4, Map.width - 4)
@@ -172,15 +220,18 @@ function Map:generateMountains()
         end
     end
     
-    -- If we have too few mountains, add more clusters
+    -- If we have too few mountains, add more ridges
     if currentMountainTiles < mountainTileCount * 0.7 then
-        print("Adding more mountains to reach target")
-        local additionalClusters = math.random(3, 5)
-        for i = 1, additionalClusters do
-            local mtX = math.random(10, Map.width - 10)
-            local mtY = math.random(10, Map.height - 10)
-            local mtSize = math.random(5, 10)
-            createMountainCluster(mtX, mtY, mtSize)
+        print("Adding more mountain ridges to reach target")
+        local additionalRidges = math.random(2, 4)
+        for i = 1, additionalRidges do
+            local startX = math.random(20, Map.width - 20)
+            local startY = math.random(20, Map.height - 20)
+            local angle = math.random() * math.pi * 2
+            local length = math.random(15, 30)
+            local width = math.random(2, 4)
+            
+            createMountainRidge(startX, startY, length, width, angle)
         end
     end
 end

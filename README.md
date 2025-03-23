@@ -175,9 +175,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgements
 
 - Using the [Serpent](https://github.com/pkulchenko/serpent) serializer available under the MIT License.
-- Using the [Simple Tiles](https://opengameart.org/content/simple-tiles) tileset available under public domain.
-- Using the [32x32_Tree](https://opengameart.org/content/32x32tree) tileset available under public domain.
-- Using concept art for main menu background [City In A Canyon](https://opengameart.org/content/city-in-a-canyon) art available under public domain.
+- Tilesets and artwork used which are available for public usage under public domain:
+  - [Simple Tiles](https://opengameart.org/content/simple-tiles)
+  - [32x32_Tree](https://opengameart.org/content/32x32tree)
+  - [City In A Canyon](https://opengameart.org/content/city-in-a-canyon)
+  - [Tiny Basic 16 Tiles](https://opengameart.org/content/tiny-16-basic)
 
 ---
 

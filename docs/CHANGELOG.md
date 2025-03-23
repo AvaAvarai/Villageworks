@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Save serialization nil checks and safer entity list handeling.
 - Villagers pathing can move over buildings, prioritize building, return to villages.
 
 ## [0.1.3] - 2025-03-22

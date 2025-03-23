@@ -99,103 +99,125 @@ function SaveLoad.saveGame(game, filename)
     }
     
     -- Save villages
-    for _, village in ipairs(game.villages) do
-        local savedVillage = {
-            id = village.id,
-            x = village.x,
-            y = village.y,
-            name = village.name,
-            population = village.population,
-            maxPopulation = village.maxPopulation,
-            resources = village.resources
-        }
-        table.insert(saveData.villages, savedVillage)
+    if game.villages then
+        for _, village in ipairs(game.villages) do
+            local savedVillage = {
+                id = village.id,
+                x = village.x,
+                y = village.y,
+                name = village.name,
+                population = village.population,
+                maxPopulation = village.maxPopulation,
+                resources = village.resources
+            }
+            table.insert(saveData.villages, savedVillage)
+        end
     end
     
     -- Save buildings
-    for _, building in ipairs(game.buildings) do
-        local savedBuilding = {
-            id = building.id,
-            villageId = building.villageId,
-            x = building.x,
-            y = building.y,
-            type = building.type,
-            health = building.health,
-            maxHealth = building.maxHealth,
-            currentVillagers = building.currentVillagers,
-            villagerCapacity = building.villagerCapacity,
-            productionTimer = building.productionTimer,
-            productionTime = building.productionTime
-        }
-        table.insert(saveData.buildings, savedBuilding)
+    if game.buildings then
+        for _, building in ipairs(game.buildings) do
+            local savedBuilding = {
+                id = building.id,
+                villageId = building.villageId,
+                x = building.x,
+                y = building.y,
+                type = building.type,
+                health = building.health,
+                maxHealth = building.maxHealth,
+                currentVillagers = building.currentVillagers,
+                villagerCapacity = building.villagerCapacity,
+                productionTimer = building.productionTimer,
+                productionTime = building.productionTime
+            }
+            table.insert(saveData.buildings, savedBuilding)
+        end
     end
     
     -- Save builders
-    for _, builder in ipairs(game.builders) do
-        local savedBuilder = {
-            id = builder.id,
-            villageId = builder.villageId,
-            x = builder.x,
-            y = builder.y,
-            targetX = builder.targetX,
-            targetY = builder.targetY,
-            state = builder.state,
-            buildingId = builder.buildingId,
-            buildingType = builder.buildingType,
-            buildingX = builder.buildingX,
-            buildingY = builder.buildingY
-        }
-        table.insert(saveData.builders, savedBuilder)
+    if game.builders then
+        for _, builder in ipairs(game.builders) do
+            local savedBuilder = {
+                id = builder.id,
+                villageId = builder.villageId,
+                x = builder.x,
+                y = builder.y,
+                targetX = builder.targetX,
+                targetY = builder.targetY,
+                state = builder.state,
+                buildingId = builder.buildingId,
+                buildingType = builder.buildingType,
+                buildingX = builder.buildingX,
+                buildingY = builder.buildingY
+            }
+            table.insert(saveData.builders, savedBuilder)
+        end
     end
     
     -- Save villagers
-    for _, villager in ipairs(game.villagers) do
-        local savedVillager = {
-            id = villager.id,
-            villageId = villager.villageId,
-            x = villager.x,
-            y = villager.y,
-            targetX = villager.targetX,
-            targetY = villager.targetY,
-            state = villager.state,
-            buildingId = villager.buildingId,
-            resourceType = villager.resourceType,
-            resourceAmount = villager.resourceAmount
-        }
-        table.insert(saveData.villagers, savedVillager)
+    if game.villagers then
+        for _, villager in ipairs(game.villagers) do
+            local savedVillager = {
+                id = villager.id,
+                villageId = villager.villageId,
+                x = villager.x,
+                y = villager.y,
+                targetX = villager.targetX,
+                targetY = villager.targetY,
+                state = villager.state,
+                buildingId = villager.buildingId,
+                resourceType = villager.resourceType,
+                resourceAmount = villager.resourceAmount
+            }
+            table.insert(saveData.villagers, savedVillager)
+        end
     end
     
     -- Save roads
-    for _, road in ipairs(game.roads) do
-        local savedRoad = {
-            id = road.id,
-            villageId = road.villageId,
-            startX = road.startX,
-            startY = road.startY,
-            endX = road.endX,
-            endY = road.endY,
-            nodes = road.nodes
-        }
-        table.insert(saveData.roads, savedRoad)
+    if game.roads then
+        for _, road in ipairs(game.roads) do
+            local savedRoad = {
+                id = road.id,
+                villageId = road.villageId,
+                startX = road.startX,
+                startY = road.startY,
+                endX = road.endX,
+                endY = road.endY,
+                nodes = road.nodes
+            }
+            table.insert(saveData.roads, savedRoad)
+        end
     end
     
     -- Serialize the game state using serpent
     local serpent = require("lib/serpent")
-    local serializedData = "-- SaveInfo: " .. date .. " - Villages: " .. #saveData.villages .. "\n"
-    serializedData = serializedData .. serpent.dump(saveData)
+    local villageCount = saveData.villages and #saveData.villages or 0
+    local serializedData = "-- SaveInfo: " .. date .. " - Villages: " .. villageCount .. "\n"
+    
+    -- Use pcall to catch any errors during serialization
+    local success, result = pcall(function()
+        return serpent.dump(saveData)
+    end)
+    
+    if not success then
+        SaveLoad.UI.showMessage("Error serializing game data: " .. (result or "Unknown error"))
+        return false
+    end
+    
+    serializedData = serializedData .. result
     
     -- Save to file
     local path = "saves/" .. filename
-    local success, message = love.filesystem.write(path, serializedData)
+    local writeSuccess, message = love.filesystem.write(path, serializedData)
     
-    if success then
+    if writeSuccess then
         SaveLoad.UI.showMessage("Game saved to " .. filename)
         SaveLoad.loadSaveFiles() -- Refresh the list
     else
         SaveLoad.UI.showMessage("Error saving game: " .. (message or "Unknown error"))
     end
     
-    return success
+    return writeSuccess
 end
 
 -- Load a saved game
@@ -358,7 +380,7 @@ function SaveLoad.drawSaveDialog()
     love.graphics.print(title, x + (width - titleWidth) / 2, y + 20)
     
     love.graphics.setFont(UI.font)
-    love.graphics.print("Your game will be saved with the current timestamp", x + 40, y + 70)
+    love.graphics.print("Your game will be saved as the timestamp", x + 40, y + 70)
     
     -- Draw action buttons
     local buttonWidth = 120

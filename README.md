@@ -4,13 +4,11 @@ Villageworks is an in-dev civilization management game where you create and mana
 
 Main menu: ![main menu screenshot](data/menu.png)
 
+Gameplay: ![gameplay screenshot](docs/screenshot.png)
+
 ## Demo Video
 
-Watch our gameplay demonstration to see Villageworks in action:
-
-Villageworks growth of Carthage Demo: [![Villageworks growth of Carthage Demo](docs/screenshot.png)](https://youtu.be/PIl3rFCVl0s)
-
-Click the image above or visit [https://youtu.be/PIl3rFCVl0s](https://youtu.be/PIl3rFCVl0s) to watch the demo.
+Villageworks growth of Carthage Demo: <https://youtu.be/PIl3rFCVl0s> visit here to watch the demo.
 
 ## Overview
 

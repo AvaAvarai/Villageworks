@@ -1451,6 +1451,13 @@ function UI.keypressed(game, key)
         end
     end
 
+    -- If main menu is showing, let MainMenu handle keypresses
+    if UI.showMainMenu then
+        if MainMenu.keypressed(key, SaveLoad) then
+            return
+        end
+    end
+
     -- Pass key press events to SaveLoad module
     SaveLoad.keypressed(game, key)
 

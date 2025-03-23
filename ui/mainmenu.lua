@@ -294,12 +294,24 @@ function MainMenu.drawWorldSizeMenu()
     local screenWidth = love.graphics.getWidth()
     local screenHeight = love.graphics.getHeight()
     
+    -- Draw a semi-transparent overlay for the entire screen
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
+    
     -- Menu dimensions - adjusted for smaller screens
     local menuWidth = math.min(500, screenWidth - 40)
     local menuHeight = math.min(400, screenHeight - 80)
     local menuX = (screenWidth - menuWidth) / 2
     local menuY = (screenHeight - menuHeight) / 2
     local cornerRadius = 10
+    
+    -- Draw menu background
+    love.graphics.setColor(0.1, 0.15, 0.2, 0.95)
+    love.graphics.rectangle("fill", menuX, menuY, menuWidth, menuHeight, cornerRadius, cornerRadius)
+    
+    -- Draw border
+    love.graphics.setColor(0.5, 0.7, 0.9, 0.8)
+    love.graphics.rectangle("line", menuX, menuY, menuWidth, menuHeight, cornerRadius, cornerRadius)
     
     -- Draw menu title
     love.graphics.setFont(UI.bigFont)
@@ -749,6 +761,27 @@ function MainMenu.wheelmoved(x, y)
         MainMenu.worldSizeScroll = math.max(0, math.min(MainMenu.maxWorldSizeScroll, 
                                             MainMenu.worldSizeScroll - scrollAmount))
         return true
+    end
+    
+    return false
+end
+
+-- Handle keyboard input for the main menu
+function MainMenu.keypressed(key, SaveLoad)
+    -- If world size menu is showing
+    if MainMenu.showWorldSizeMenu then
+        if key == "escape" then
+            MainMenu.showWorldSizeMenu = false
+            return true
+        end
+    end
+    
+    -- If load game dialog is showing
+    if SaveLoad and SaveLoad.showLoadDialog then
+        if key == "escape" then
+            SaveLoad.showLoadDialog = false
+            return true
+        end
     end
     
     return false

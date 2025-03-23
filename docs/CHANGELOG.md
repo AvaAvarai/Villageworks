@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added freeform road construction where two map points have road interpolated.
+- Road build queue and in-process road tiles using alpha-overlay on road tiles.
 - Added world size selection menu with Small, Medium, Large, and Huge options
 - Added scrollable interface for world size selection with mouse wheel support
 - Added detailed descriptions and dimensions for each world size option

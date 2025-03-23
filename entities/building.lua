@@ -166,7 +166,19 @@ function Building:draw(UI)
         -- Use the entity name font for the building type
         local currentFont = love.graphics.getFont()
         love.graphics.setFont(UI.entityNameFont)
-        love.graphics.print(self.type, self.x - 10, self.y - 30)
+        local name = self.type
+        if self.type == "fishing_hut" then
+            name = "Fishing Hut"
+        elseif self.type == "mine" then
+            name = "Mine"
+        elseif self.type == "lumberyard" then
+            name = "Lumberyard"
+        elseif self.type == "house" then
+            name = "House"
+        elseif self.type == "farm" then
+            name = "Farm"
+        end
+        love.graphics.print(name, self.x - 10, self.y - 30)
         love.graphics.setFont(currentFont)
         
         -- Display workers or villagers

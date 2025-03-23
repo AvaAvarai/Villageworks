@@ -128,10 +128,12 @@ villageworks/
 ├── camera.lua       # Camera controls and viewport
 ├── ui.lua           # Main UI coordinator
 ├── ui/              # Modular UI components
+│   ├── buildmenu.lua      # Building menuing
 │   ├── documentation.lua  # Documentation system
 │   ├── mainmenu.lua       # Main menu interface
-│   └── roads.lua          # Roads drawing system
-|   └── saveload.lua       # Save/load functionality
+│   ├── roads.lua          # Roads drawing system
+│   ├── saveload.lua       # Save/load functionality
+|   └── tooltip.lua        # Tooltip overlays
 ├── main.lua         # Entry point and game loop
 ├── map.lua          # Map generation and rendering
 ├── version.lua      # Version tracking

@@ -84,7 +84,6 @@ function MainMenu.drawBackground()
     end
     
     -- Draw the background image scaled to fill the screen
-    love.graphics.setColor(1, 1, 1, 1)
     local screenWidth = love.graphics.getWidth()
     local screenHeight = love.graphics.getHeight()
     local imgWidth = UI.backgroundImage:getWidth()
@@ -102,18 +101,6 @@ function MainMenu.drawBackground()
     local y = (screenHeight - scaledHeight) / 2
     
     love.graphics.draw(UI.backgroundImage, x, y, 0, scale, scale)
-    
-    -- Add a dark overlay for better text visibility (darkened at the top and bottom, lighter in the middle)
-    love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight / 3) -- Darker at top
-    
-    -- Center gradient section
-    for i = 1, 10 do
-        local alpha = 0.7 - (i / 15) -- Gradient from 0.7 to 0.03
-        love.graphics.setColor(0, 0, 0, alpha)
-        local height = screenHeight / 3 / 10
-        love.graphics.rectangle("fill", 0, screenHeight / 3 + (i-1) * height, screenWidth, height)
-    end
     
     -- Bottom section
     love.graphics.setColor(0, 0, 0, 0.3)
@@ -146,11 +133,26 @@ function MainMenu.drawBackground()
     love.graphics.setColor(r, g, b, 1)
     love.graphics.print(title, (screenWidth - titleWidth) / 2, 80)
     
-    -- Draw tagline
+    -- Draw tagline with glow effect
     love.graphics.setFont(UI.bigFont)  -- Larger font for tagline
     local tagline = "Create and manage a network of thriving settlements."
     local taglineWidth = UI.bigFont:getWidth(tagline)
-    love.graphics.setColor(0.9, 0.9, 0.9, 0.9)
+    
+    -- Draw outer glow
+    local glowColor = {0.4, 0.7, 1.0}
+    local pulseIntensity = math.abs(math.sin(love.timer.getTime() * 0.5)) * 0.3
+    
+    for i = 3, 1, -1 do
+        local alpha = (pulseIntensity / i) * 0.2
+        love.graphics.setColor(glowColor[1], glowColor[2], glowColor[3], alpha)
+        love.graphics.print(tagline, (screenWidth - taglineWidth) / 2 - i, 140 - i)
+        love.graphics.print(tagline, (screenWidth - taglineWidth) / 2 + i, 140 - i)
+        love.graphics.print(tagline, (screenWidth - taglineWidth) / 2 - i, 140 + i)
+        love.graphics.print(tagline, (screenWidth - taglineWidth) / 2 + i, 140 + i)
+    end
+    
+    -- Draw main tagline text
+    love.graphics.setColor(1.0, 1.0, 1.0, 1.0)
     love.graphics.print(tagline, (screenWidth - taglineWidth) / 2, 140)
     
     -- Draw version information at the bottom of the screen
@@ -292,22 +294,12 @@ function MainMenu.drawWorldSizeMenu()
     local screenWidth = love.graphics.getWidth()
     local screenHeight = love.graphics.getHeight()
     
-    -- Semi-transparent dark overlay
-    love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
-    
     -- Menu dimensions - adjusted for smaller screens
     local menuWidth = math.min(500, screenWidth - 40)
     local menuHeight = math.min(400, screenHeight - 80)
     local menuX = (screenWidth - menuWidth) / 2
     local menuY = (screenHeight - menuHeight) / 2
     local cornerRadius = 10
-    
-    -- Draw menu background
-    love.graphics.setColor(0.1, 0.15, 0.2, 0.95)
-    love.graphics.rectangle("fill", menuX, menuY, menuWidth, menuHeight, cornerRadius, cornerRadius)
-    love.graphics.setColor(0.4, 0.6, 0.8, 0.7)
-    love.graphics.rectangle("line", menuX, menuY, menuWidth, menuHeight, cornerRadius, cornerRadius)
     
     -- Draw menu title
     love.graphics.setFont(UI.bigFont)

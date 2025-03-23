@@ -12,12 +12,16 @@ function UI.init()
     UI.bigFont = love.graphics.newFont(20)
     UI.smallFont = love.graphics.newFont(10)
     UI.titleFont = love.graphics.newFont(48)  -- Larger font for titles
+    UI.entityNameFont = love.graphics.newFont(16)  -- New font for entity names with higher DPI
     
     -- Font for main menu
     UI.menuFont = love.graphics.newFont(32)
     
     -- Pre-load background image
     UI.backgroundImage = love.graphics.newImage("data/background.png")
+    
+    -- UI scaling factor for different screen densities
+    UI.dpiScale = 1
     
     -- UI state
     UI.hoveredBuilding = nil
@@ -625,18 +629,54 @@ function UI.draw(game)
     game.camera:endDraw()
 
     -- Draw normal game UI
-    love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), 40)
+    local hudHeight = math.floor(50 * UI.dpiScale)
+    love.graphics.setColor(0.1, 0.1, 0.2, 0.85)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), hudHeight)
     
-    -- Draw resources
+    -- Add a subtle border at the bottom
+    love.graphics.setColor(0.3, 0.3, 0.5, 0.7)
+    love.graphics.rectangle("fill", 0, hudHeight - 1, love.graphics.getWidth(), 1)
+    
+    -- Draw resources with improved styling
+    love.graphics.setFont(UI.bigFont)
+    
+    -- Money display with icon
+    love.graphics.setColor(1, 0.9, 0.2)  -- Gold color for money
+    love.graphics.print("$" .. math.floor(game.money), 20, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    
+    -- Resources with colored indicators
+    local spacing = 120 * UI.dpiScale
+    local xOffset = 150 * UI.dpiScale
+    
+    -- Wood resource
+    love.graphics.setColor(0.8, 0.5, 0.2)  -- Brown for wood
+    love.graphics.print("Wood:   ", xOffset, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
     love.graphics.setColor(1, 1, 1)
-    love.graphics.setFont(UI.font)
-    love.graphics.print("Money: $" .. math.floor(game.money), 10, 10)
-    love.graphics.print("Wood: " .. math.floor(game.resources.wood), 150, 10)
-    love.graphics.print("Stone: " .. math.floor(game.resources.stone), 250, 10)
-    love.graphics.print("Food: " .. math.floor(game.resources.food), 350, 10)
-    love.graphics.print("Builders: " .. #game.builders, 450, 10)
-    love.graphics.print("Villages: " .. #game.villages, 550, 10)
+    love.graphics.print(math.floor(game.resources.wood), xOffset + 70 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    
+    -- Stone resource
+    love.graphics.setColor(0.6, 0.6, 0.7)  -- Gray for stone
+    love.graphics.print("Stone:   ", xOffset + spacing, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(math.floor(game.resources.stone), xOffset + spacing + 70 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    
+    -- Food resource
+    love.graphics.setColor(0.2, 0.8, 0.3)  -- Green for food
+    love.graphics.print("Food:   ", xOffset + spacing * 2, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(math.floor(game.resources.food), xOffset + spacing * 2 + 70 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    
+    -- Builder count
+    love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue for builders
+    love.graphics.print("Builders:   ", xOffset + spacing * 3, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(#game.builders, xOffset + spacing * 3 + 100 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    
+    -- Village count
+    love.graphics.setColor(0.9, 0.3, 0.6)  -- Purple for villages
+    love.graphics.print("Villages:   ", xOffset + spacing * 4, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(#game.villages, xOffset + spacing * 4 + 100 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
     
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)

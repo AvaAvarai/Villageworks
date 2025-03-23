@@ -1,6 +1,7 @@
 local Config = require("config")
 local Utils = require("utils")
 local VillageNames = require("data/village_names")
+local UI = require("ui")
 
 local Village = {}
 Village.__index = Village
@@ -261,7 +262,11 @@ function Village:draw()
     
     love.graphics.circle("fill", self.x, self.y, 15)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(self.name, self.x - 20, self.y - 25)
+    -- Use the entity name font for the village name
+    local currentFont = love.graphics.getFont()
+    love.graphics.setFont(UI.entityNameFont)
+    love.graphics.print(self.name, self.x - 20, self.y - 30)
+    love.graphics.setFont(currentFont)
     
     -- Draw population information when hovered
     if self.showStats then

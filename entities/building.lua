@@ -1,5 +1,6 @@
 local Config = require("config")
 local Utils = require("utils")
+local UI = require("ui")
 
 local Building = {}
 Building.__index = Building
@@ -126,7 +127,11 @@ function Building:draw()
     
     -- Draw text info
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(self.type, self.x - 10, self.y - 25)
+    -- Use the entity name font for the building type
+    local currentFont = love.graphics.getFont()
+    love.graphics.setFont(UI.entityNameFont)
+    love.graphics.print(self.type, self.x - 10, self.y - 30)
+    love.graphics.setFont(currentFont)
     
     -- Display workers or villagers
     if self.type ~= "house" then

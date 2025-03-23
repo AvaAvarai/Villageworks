@@ -1505,6 +1505,15 @@ function UI.wheelmoved(x, y)
         return SaveLoad.wheelmoved(x, y)
     end
     
+    -- Pass wheel events to main menu if it's showing and world size selection is active
+    if UI.showMainMenu then
+        -- Check if MainMenu has wheelmoved handler
+        local MainMenu = require("ui.mainmenu")
+        if MainMenu.wheelmoved then
+            return MainMenu.wheelmoved(x, y)
+        end
+    end
+    
     -- Default wheel behavior (e.g., zooming)
     return false
 end

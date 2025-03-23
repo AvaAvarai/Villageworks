@@ -19,7 +19,7 @@ function Village.new(x, y)
         name = name,
         x = x,
         y = y,
-        villagerTimer = Config.BUILDER_SPAWN_TIME, -- First villager comes after normal timer
+        villagerTimer = Config.VILLAGER_SPAWN_TIME, -- First villager comes after normal timer
         needsHousing = true,
         needsResources = {},
         needsRoads = {},  -- Track which villages/buildings we need roads to

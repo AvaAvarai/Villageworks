@@ -397,14 +397,9 @@ end
 function Villager:getMovementSpeed(game)
     local baseSpeed = Config.VILLAGER_SPEED
     
-    -- If villager is building, use builder speed
-    if self.state == "building" or self.state == "building_road" or self.state == "moving_to_build" then
-        baseSpeed = Config.BUILDER_SPEED
-    end
-    
     if self:isOnRoad(game) then
         -- Increase road speed multiplier for faster movement
-        return baseSpeed * 1.75 -- Increased from default road speed multiplier
+        return baseSpeed * Config.ROAD_SPEED_MULTIPLIER
     else
         return baseSpeed
     end

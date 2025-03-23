@@ -2,7 +2,6 @@
 local Config = {
     -- Costs
     VILLAGE_COST = 50,
-    BUILDER_COST = 20,
     
     -- Building properties
     BUILDING_TYPES = {
@@ -57,9 +56,6 @@ local Config = {
     BUILDING_SIZE = 24,  -- Size of buildings for overlap detection (diameter)
     
     -- Entity behavior
-    BUILDER_SPAWN_TIME = 10,
-    BUILDER_BUILD_CHANCE = 0.05, -- Increased from 0.01
-    BUILDER_SPEED = 40,
     VILLAGER_SPEED = 30,
     
     -- Village population settings

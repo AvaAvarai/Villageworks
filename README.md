@@ -137,6 +137,7 @@ villageworks/
 ├── main.lua         # Entry point and game loop
 ├── map.lua          # Map generation and rendering
 ├── version.lua      # Version tracking
+├── worldgen.lua     # World generation
 ├── lib/
 │   └── serpent.lua  # Serialization library
 ├── data/

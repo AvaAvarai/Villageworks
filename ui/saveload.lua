@@ -12,7 +12,6 @@ function SaveLoad.init(UI)
     SaveLoad.saveNameInput = ""
     SaveLoad.saveInputActive = false
     SaveLoad.loadDialogScroll = 0
-    SaveLoad.MAX_LOAD_FILES_VISIBLE = 10 -- Number of save files visible at once
     
     -- Ensure the saves directory exists
     SaveLoad.ensureSavesDirectoryExists()

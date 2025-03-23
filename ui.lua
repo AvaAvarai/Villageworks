@@ -3,6 +3,7 @@ local Utils = require("utils")
 local Documentation = require("ui.documentation")
 local SaveLoad = require("ui.saveload")
 local MainMenu = require("ui.mainmenu")
+local Roads = require("ui.roads")
 
 local UI = {}
 
@@ -29,11 +30,6 @@ function UI.init()
     UI.selectedBuilding = nil
     UI.showBuildMenu = false
     UI.tooltip = nil
-    UI.showRoadInfo = false
-    UI.roadCreationMode = false
-    UI.roadStartVillage = nil
-    UI.roadStartX = nil
-    UI.roadStartY = nil
     UI.infoKeyDown = false  -- Track when the 'i' key is held down
     
     -- Hover state for menu buttons
@@ -56,6 +52,7 @@ function UI.init()
     Documentation.init(UI)
     SaveLoad.init(UI)
     MainMenu.init(UI)
+    Roads.init(UI)
     
     -- Pause menu options
     UI.pauseMenuOptions = {
@@ -228,13 +225,8 @@ function UI.update(game, dt)
         table.insert(UI.tooltip.lines, "Stone: +" .. string.format("%.1f", resourceProduction.stone))
     end
     
-    -- Road creation mode positioning
-    if UI.roadCreationMode and UI.roadStartX then
-        -- Show road preview from start to mouse cursor
-        UI.showRoadInfo = true
-    else
-        UI.showRoadInfo = false
-    end
+    -- Update road-related state through Roads module
+    Roads.update(game, dt)
     
     -- Update message timer
     if UI.message then
@@ -272,51 +264,9 @@ function UI.handleClick(game, x, y)
         return UI.handlePauseMenuClick(game, x, y)
     end
     
-    -- Check for road creation mode
-    if UI.roadCreationMode then
-        -- Convert screen coordinates to world coordinates
-        local worldX, worldY = game.camera:screenToWorld(x, y)
-        
-        -- If this is the first click (no start point set)
-        if not UI.roadStartX then
-            -- Only start a road on buildable tiles
-            if game.map:canBuildAt(worldX, worldY) then
-                UI.roadStartX = worldX
-                UI.roadStartY = worldY
-                UI.showRoadInfo = true
-                UI.showMessage("Select destination point for the road")
-            else
-                UI.showMessage("Cannot start a road on water or mountains")
-            end
-            return true
-        else
-            -- This is the second click, plan the road between points
-            if game.map:canBuildAt(worldX, worldY) then
-                -- Plan the road path
-                game.map:planRoadPath(
-                    UI.roadStartX, 
-                    UI.roadStartY, 
-                    worldX, 
-                    worldY
-                )
-                
-                -- Create builder tasks for all planned roads
-                local plannedRoads = game.map:getAllPlannedRoads()
-                UI.createRoadBuildTasks(game, plannedRoads)
-                
-                -- Show message about the planned road
-                UI.showMessage("Road planned with " .. #plannedRoads .. " tiles")
-            else
-                UI.showMessage("Cannot end a road on water or mountains")
-            end
-            
-            -- Reset road creation mode
-            UI.roadCreationMode = false
-            UI.roadStartX = nil
-            UI.roadStartY = nil
-            UI.showRoadInfo = false
-            return true
-        end
+    -- Check for road creation mode - handle through Roads module
+    if Roads.isInRoadCreationMode() then
+        return Roads.handleRoadClick(game, x, y)
     end
     
     -- Build menu interactions
@@ -336,7 +286,7 @@ function UI.handleClick(game, x, y)
         -- Check if we're clicking the "Plan Road" button
         if x >= menuX + 20 and x <= menuX + 120 and
            y >= menuY + menuHeight - 80 and y <= menuY + menuHeight - 50 then
-            UI.roadCreationMode = true
+            Roads.enterRoadCreationMode()
             UI.showBuildMenu = false
             return true
         end
@@ -402,47 +352,12 @@ function UI.handleClick(game, x, y)
     
     -- Check if clicking on a village (when not in build menu already)
     if not UI.showBuildMenu and UI.hoveredVillage then
-        -- Check if road creation mode is active and we need to select a destination village
-        if UI.roadCreationMode and UI.roadStartVillage then
-            -- End-point village selected, create planned roads
-            if UI.roadStartVillage.id ~= UI.hoveredVillage.id then
-                -- Plan the road path
-                game.map:planRoadPath(
-                    UI.roadStartVillage.x, 
-                    UI.roadStartVillage.y, 
-                    UI.hoveredVillage.x, 
-                    UI.hoveredVillage.y
-                )
-                
-                -- Create builder tasks for all planned roads
-                local plannedRoads = game.map:getAllPlannedRoads()
-                UI.createRoadBuildTasks(game, plannedRoads)
-                
-                -- Show a message about the planned road
-                UI.showMessage("Road planned from " .. UI.roadStartVillage.name .. " to " .. UI.hoveredVillage.name)
-                
-                -- Reset road creation mode
-                UI.roadCreationMode = false
-                UI.roadStartVillage = nil
-                UI.roadStartX = nil
-                UI.roadStartY = nil
-                return true
-            end
-        elseif UI.roadCreationMode and not UI.roadStartVillage then
-            -- Starting point village selected
-            UI.roadStartVillage = UI.hoveredVillage
-            UI.roadStartX = UI.hoveredVillage.x
-            UI.roadStartY = UI.hoveredVillage.y
-            UI.showMessage("Select destination village for the road")
-            return true
-        else
-            -- Select this village
-            game.selectedVillage = UI.hoveredVillage
-            
-            -- Open build menu for this village
-            UI.showBuildMenu = true
-            return true
-        end
+        -- Select this village
+        game.selectedVillage = UI.hoveredVillage
+        
+        -- Open build menu for this village
+        UI.showBuildMenu = true
+        return true
     end
     
     return false
@@ -743,8 +658,8 @@ function UI.draw(game)
         UI.drawBuildMenu(game)
     end
     
-    -- Draw road interface
-    UI.drawRoadInterface(game)
+    -- Draw road interface using Roads module
+    Roads.draw(game)
     
     -- Draw village building mode indicator
     if game.uiMode == Config.UI_MODE_BUILDING_VILLAGE then
@@ -1494,100 +1409,6 @@ function UI.wheelmoved(x, y)
     
     -- Default wheel behavior (e.g., zooming)
     return false
-end
-
--- Create road build tasks for all planned roads
-function UI.createRoadBuildTasks(game, plannedRoads)
-    -- Make sure builder tasks array exists
-    if not game.buildingTasks then
-        game.buildingTasks = {}
-    end
-    
-    -- Create tasks for each planned road tile
-    for _, roadTile in ipairs(plannedRoads) do
-        -- Convert tile coordinates to world coordinates
-        local worldX, worldY = game.map:tileToWorld(roadTile.x, roadTile.y)
-        
-        -- Create a task
-        local task = {
-            type = "build_road",
-            x = worldX,
-            y = worldY,
-            tileX = roadTile.x,
-            tileY = roadTile.y,
-            priority = 3,  -- Medium priority
-            progress = 0,
-            totalWorkNeeded = 2  -- Seconds to build a road
-        }
-        
-        -- Add the task to the game's task list
-        table.insert(game.buildingTasks, task)
-    end
-    
-    -- Ensure we have builders assigned to these tasks
-    UI.showMessage("Road construction tasks created: " .. #plannedRoads .. " tiles")
-end
-
--- Draw road interface
-function UI.drawRoadInterface(game)
-    -- Draw road creation preview
-    if UI.showRoadInfo then
-        -- Get mouse position
-        local mouseX, mouseY = love.mouse.getPosition()
-        local worldX, worldY = game.camera:screenToWorld(mouseX, mouseY)
-        
-        -- Check if the current path would be valid
-        local isValidPath = false
-        if UI.roadStartX then
-            local path = game.map:createRoadPath(UI.roadStartX, UI.roadStartY, worldX, worldY)
-            isValidPath = path ~= nil
-            
-            -- Draw the path in different colors based on validity
-            love.graphics.setLineWidth(3)
-            if isValidPath then
-                love.graphics.setColor(0.8, 0.8, 0.2, 0.5) -- Yellow for valid path
-            else
-                love.graphics.setColor(0.8, 0.2, 0.2, 0.5) -- Red for invalid path
-            end
-            love.graphics.line(UI.roadStartX, UI.roadStartY, worldX, worldY)
-            love.graphics.setLineWidth(1)
-            
-            -- Draw circles at start and potential end points
-            love.graphics.setColor(0.2, 0.8, 0.2, 0.7)
-            love.graphics.circle("fill", UI.roadStartX, UI.roadStartY, 5)
-            
-            if isValidPath then
-                love.graphics.setColor(0.2, 0.8, 0.2, 0.5)
-            else
-                love.graphics.setColor(0.8, 0.2, 0.2, 0.5)
-            end
-            love.graphics.circle("fill", worldX, worldY, 5)
-        end
-        
-        -- Draw text instructions
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.setFont(UI.font)
-        if isValidPath then
-            love.graphics.print("Planning Road - Click to set end point or ESC to cancel", 
-                love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
-        else
-            love.graphics.print("Invalid path - Cannot build roads through water or mountains!", 
-                love.graphics.getWidth() / 2 - 200, love.graphics.getHeight() - 40)
-        end
-    end
-    
-    -- Draw road creation mode indicator
-    if UI.roadCreationMode then
-        love.graphics.setColor(0.8, 0.8, 0.2)
-        love.graphics.setFont(UI.font)
-        if not UI.roadStartX then
-            love.graphics.print("Road Planning Mode - Click to set starting point", 
-                10, love.graphics.getHeight() - 40)
-        else
-            love.graphics.print("Road Planning Mode - Click to set end point", 
-                10, love.graphics.getHeight() - 40)
-        end
-    end
 end
 
 return UI 

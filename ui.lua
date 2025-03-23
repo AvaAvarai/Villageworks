@@ -640,43 +640,74 @@ function UI.draw(game)
     -- Draw resources with improved styling
     love.graphics.setFont(UI.bigFont)
     
+    -- Calculate available width for resource display
+    local screenWidth = love.graphics.getWidth()
+    local availableWidth = screenWidth - 40  -- Leave some margin on both sides
+    
+    -- Count the number of resources we need to display
+    local resourceCount = 6  -- Money, Wood, Stone, Food, Builders, Villages
+    
+    -- Calculate minimum spacing between resources based on screen width
+    local minSpacing = 15 * UI.dpiScale  -- Minimum spacing between items
+    local baseSpacing = math.max(minSpacing, (availableWidth / resourceCount) * 0.2)  -- Allocate 20% of item width to spacing
+    
+    local yPos = math.floor(hudHeight/2 - UI.bigFont:getHeight()/2)
+    local currentXOffset = 20  -- Start with some margin
+    
     -- Money display with icon
     love.graphics.setColor(1, 0.9, 0.2)  -- Gold color for money
-    love.graphics.print("$" .. math.floor(game.money), 20, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
-    
-    -- Resources with colored indicators
-    local spacing = 120 * UI.dpiScale
-    local xOffset = 150 * UI.dpiScale
+    local moneyText = "$" .. math.floor(game.money)
+    love.graphics.print(moneyText, currentXOffset, yPos)
+    currentXOffset = currentXOffset + UI.bigFont:getWidth(moneyText) + baseSpacing
     
     -- Wood resource
     love.graphics.setColor(0.8, 0.5, 0.2)  -- Brown for wood
-    love.graphics.print("Wood:   ", xOffset, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local woodLabel = "Wood: "
+    love.graphics.print(woodLabel, currentXOffset, yPos)
+    local labelWidth = UI.bigFont:getWidth(woodLabel)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(math.floor(game.resources.wood), xOffset + 70 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local woodValue = math.floor(game.resources.wood)
+    love.graphics.print(woodValue, currentXOffset + labelWidth, yPos)
+    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(woodValue) + baseSpacing
     
     -- Stone resource
     love.graphics.setColor(0.6, 0.6, 0.7)  -- Gray for stone
-    love.graphics.print("Stone:   ", xOffset + spacing, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local stoneLabel = "Stone: "
+    love.graphics.print(stoneLabel, currentXOffset, yPos)
+    labelWidth = UI.bigFont:getWidth(stoneLabel)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(math.floor(game.resources.stone), xOffset + spacing + 70 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local stoneValue = math.floor(game.resources.stone)
+    love.graphics.print(stoneValue, currentXOffset + labelWidth, yPos)
+    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(stoneValue) + baseSpacing
     
     -- Food resource
     love.graphics.setColor(0.2, 0.8, 0.3)  -- Green for food
-    love.graphics.print("Food:   ", xOffset + spacing * 2, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local foodLabel = "Food: "
+    love.graphics.print(foodLabel, currentXOffset, yPos)
+    labelWidth = UI.bigFont:getWidth(foodLabel)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(math.floor(game.resources.food), xOffset + spacing * 2 + 70 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local foodValue = math.floor(game.resources.food)
+    love.graphics.print(foodValue, currentXOffset + labelWidth, yPos)
+    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(foodValue) + baseSpacing
     
     -- Builder count
     love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue for builders
-    love.graphics.print("Builders:   ", xOffset + spacing * 3, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local builderLabel = "Builders: "
+    love.graphics.print(builderLabel, currentXOffset, yPos)
+    labelWidth = UI.bigFont:getWidth(builderLabel)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(#game.builders, xOffset + spacing * 3 + 100 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local builderValue = #game.builders
+    love.graphics.print(builderValue, currentXOffset + labelWidth, yPos)
+    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(builderValue) + baseSpacing
     
     -- Village count
     love.graphics.setColor(0.9, 0.3, 0.6)  -- Purple for villages
-    love.graphics.print("Villages:   ", xOffset + spacing * 4, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local villageLabel = "Villages: "
+    love.graphics.print(villageLabel, currentXOffset, yPos)
+    labelWidth = UI.bigFont:getWidth(villageLabel)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(#game.villages, xOffset + spacing * 4 + 100 * UI.dpiScale, math.floor(hudHeight/2 - UI.bigFont:getHeight()/2))
+    local villageValue = #game.villages
+    love.graphics.print(villageValue, currentXOffset + labelWidth, yPos)
     
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)

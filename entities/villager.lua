@@ -662,12 +662,12 @@ end
 -- Look for building tasks to handle
 function Villager:findBuildTask(game)
     -- First try to find tasks from the global task list - closest task first
-    if game.builderTasks and #game.builderTasks > 0 then
+    if game.buildingTasks and #game.buildingTasks > 0 then
         local bestTaskIndex = nil
         local bestDistance = math.huge
         
         -- Find the closest task
-        for i, task in ipairs(game.builderTasks) do
+        for i, task in ipairs(game.buildingTasks) do
             local distance = Utils.distance(self.x, self.y, task.x, task.y)
             if distance < bestDistance then
                 bestTaskIndex = i
@@ -677,8 +677,8 @@ function Villager:findBuildTask(game)
         
         -- If found a task, assign it to this villager
         if bestTaskIndex then
-            self.buildTask = game.builderTasks[bestTaskIndex]
-            table.remove(game.builderTasks, bestTaskIndex)
+            self.buildTask = game.buildingTasks[bestTaskIndex]
+            table.remove(game.buildingTasks, bestTaskIndex)
             
             -- Set target location and state
             self.targetX = self.buildTask.x

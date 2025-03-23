@@ -60,7 +60,6 @@ local Config = {
     
     -- Village population settings
     INITIAL_VILLAGE_POPULATION = 2,   -- Number of villagers created with a new village
-    HOUSE_PRIORITY_FACTOR = 0.8,    -- How strongly builders prioritize building houses
     POPULATION_GROWTH_TARGET = 0.7, -- Target to maintain population at % of capacity
     
     -- Resource initial values

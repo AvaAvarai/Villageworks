@@ -22,7 +22,7 @@ local game = {
     uiMode = Config.UI_MODE_NORMAL, -- Current UI interaction mode
     gameSpeed = Config.TIME_NORMAL_SPEED, -- Current game speed
     map = nil, -- Reference to the map
-    builderTasks = {} -- Global list of tasks for builders
+    buildingTasks = {} -- Global list of tasks for buildings
 }
 
 -- Function to reset the game state
@@ -41,7 +41,7 @@ function game:reset(isLoading)
     self.selectedVillage = nil
     self.uiMode = Config.UI_MODE_NORMAL
     self.gameSpeed = Config.TIME_NORMAL_SPEED
-    self.builderTasks = {}  -- Reset builder tasks
+    self.buildingTasks = {}  -- Reset builder tasks
     
     -- Reset camera position
     if self.camera then

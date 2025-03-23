@@ -93,7 +93,7 @@ function SaveLoad.saveGame(game, filename)
         -- Only save the necessary data from entities
         villages = {},
         buildings = {},
-        builders = {},
+        buildingTasks = {},
         villagers = {},
         roads = {}
     }
@@ -134,23 +134,21 @@ function SaveLoad.saveGame(game, filename)
         end
     end
     
-    -- Save builders
-    if game.builders then
-        for _, builder in ipairs(game.builders) do
-            local savedBuilder = {
-                id = builder.id,
-                villageId = builder.villageId,
-                x = builder.x,
-                y = builder.y,
-                targetX = builder.targetX,
-                targetY = builder.targetY,
-                state = builder.state,
-                buildingId = builder.buildingId,
-                buildingType = builder.buildingType,
-                buildingX = builder.buildingX,
-                buildingY = builder.buildingY
+    -- Save building tasks
+    if game.buildingTasks then
+        for _, task in ipairs(game.buildingTasks) do
+            local savedTask = {
+                x = task.x,
+                y = task.y,
+                type = task.type,
+                villageId = task.villageId,
+                progress = task.progress,
+                totalWorkNeeded = task.totalWorkNeeded,
+                priority = task.priority,
+                tileX = task.tileX,
+                tileY = task.tileY
             }
-            table.insert(saveData.builders, savedBuilder)
+            table.insert(saveData.buildingTasks, savedTask)
         end
     end
     
@@ -263,7 +261,7 @@ function SaveLoad.loadGame(game, filepath)
             
             -- Calculate tile dimensions from the tileset image
             local tilesetWidth = game.map.tileset:getWidth()
-            local tileCount = 3  -- We have 3 tiles: grass, road, water
+            local tileCount = 5  -- Updated: Mountain, Forest, Grass, Road, Water
             game.map.tileSize = tilesetWidth / tileCount
             
             -- Create tile quads for each tile in the tileset
@@ -306,19 +304,21 @@ function SaveLoad.loadGame(game, filepath)
         table.insert(game.buildings, building)
     end
     
-    -- Load builders
-    for _, savedBuilder in ipairs(saveData.builders or {}) do
-        local Builder = require("entities/builder")
-        local builder = Builder.new(savedBuilder.x, savedBuilder.y, savedBuilder.villageId)
-        builder.id = savedBuilder.id
-        builder.targetX = savedBuilder.targetX
-        builder.targetY = savedBuilder.targetY
-        builder.state = savedBuilder.state
-        builder.buildingId = savedBuilder.buildingId
-        builder.buildingType = savedBuilder.buildingType
-        builder.buildingX = savedBuilder.buildingX
-        builder.buildingY = savedBuilder.buildingY
-        table.insert(game.builders, builder)
+    -- Load building tasks
+    for _, savedTask in ipairs(saveData.buildingTasks or {}) do
+        local BuildingTask = require("entities/building_task")
+        local task = BuildingTask.new(
+            savedTask.x, 
+            savedTask.y, 
+            savedTask.type, 
+            savedTask.villageId, 
+            savedTask.totalWorkNeeded
+        )
+        task.progress = savedTask.progress
+        task.priority = savedTask.priority
+        task.tileX = savedTask.tileX
+        task.tileY = savedTask.tileY
+        table.insert(game.buildingTasks, task)
     end
     
     -- Load villagers
@@ -332,6 +332,15 @@ function SaveLoad.loadGame(game, filepath)
         villager.buildingId = savedVillager.buildingId
         villager.resourceType = savedVillager.resourceType
         villager.resourceAmount = savedVillager.resourceAmount
+        
+        -- Always reset building-related fields to prevent nil access errors
+        villager.buildTask = nil
+        villager.buildProgress = 0
+        -- If the villager was in building state, change it to idle
+        if villager.state == "building" then
+            villager.state = "idle"
+        end
+        
         table.insert(game.villagers, villager)
     end
     
@@ -354,6 +363,31 @@ function SaveLoad.loadGame(game, filepath)
     SaveLoad.UI.showMainMenu = false
     SaveLoad.showLoadDialog = false
     SaveLoad.UI.gameRunning = true
+    
+    -- Additional post-loading cleanup and linking
+    -- Ensure all building tasks are properly linked to villagers
+    -- This prevents errors when loading the game multiple times
+    for _, village in ipairs(game.villages) do
+        -- Assign idle villagers from this village to available building tasks
+        local villageBuildingTasks = {}
+        for _, task in ipairs(game.buildingTasks) do
+            if task.villageId == village.id then
+                table.insert(villageBuildingTasks, task)
+            end
+        end
+        
+        -- Sort tasks by priority
+        table.sort(villageBuildingTasks, function(a, b) 
+            return (a.priority or 0) > (b.priority or 0)
+        end)
+    end
+    
+    -- Reset pathfinding state to prevent errors
+    for _, villager in ipairs(game.villagers) do
+        villager.path = nil
+        if villager.targetX == nil then villager.targetX = villager.x end
+        if villager.targetY == nil then villager.targetY = villager.y end
+    end
     
     return true
 end
@@ -697,21 +731,21 @@ function SaveLoad.keypressed(game, key)
             SaveLoad.selectedSaveFile = nil
         end
     end
-end
-
--- Open save dialog
-function SaveLoad.showSaveDialog()
-    SaveLoad.showSaveDialog = true
-    SaveLoad.loadSaveFiles() -- Refresh list of saves
-    SaveLoad.selectedSaveFile = nil
-end
-
--- Open load dialog
-function SaveLoad.showLoadDialog()
-    SaveLoad.showLoadDialog = true
-    SaveLoad.loadSaveFiles() -- Refresh list of saves
-    SaveLoad.selectedSaveFile = nil
-    SaveLoad.loadDialogScroll = 0 -- Reset scroll position
+    
+    if SaveLoad.showLoadDialog then
+        if key == "escape" then
+            SaveLoad.showLoadDialog = false
+            SaveLoad.selectedSaveFile = nil
+            SaveLoad.loadDialogScroll = 0 -- Reset scroll position
+        end
+    end
+    
+    if SaveLoad.showSaveDialog then
+        if key == "escape" then
+            SaveLoad.showSaveDialog = false
+            SaveLoad.UI.showPauseMenu = true
+        end
+    end
 end
 
 -- Handle mouse wheel events for scrolling
@@ -737,4 +771,4 @@ function SaveLoad.wheelmoved(x, y)
     return false -- Event not handled
 end
 
-return SaveLoad 
+return SaveLoad

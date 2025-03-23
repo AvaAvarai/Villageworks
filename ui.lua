@@ -1499,8 +1499,8 @@ end
 -- Create road build tasks for all planned roads
 function UI.createRoadBuildTasks(game, plannedRoads)
     -- Make sure builder tasks array exists
-    if not game.builderTasks then
-        game.builderTasks = {}
+    if not game.buildingTasks then
+        game.buildingTasks = {}
     end
     
     -- Create tasks for each planned road tile
@@ -1521,7 +1521,7 @@ function UI.createRoadBuildTasks(game, plannedRoads)
         }
         
         -- Add the task to the game's task list
-        table.insert(game.builderTasks, task)
+        table.insert(game.buildingTasks, task)
     end
     
     -- Ensure we have builders assigned to these tasks

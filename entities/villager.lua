@@ -145,17 +145,21 @@ function Villager.update(villagers, game, dt)
                         villager.resourceAmount = 0
                     end
                     
-                    -- ALWAYS go back to work at the original workplace
-                    if villager.targetBuilding then
+                    -- First check for building tasks (highest priority)
+                    if villager:findBuildTask(game) then
+                        -- Task found, do nothing more here
+                    -- Next try to return to original workplace if it exists
+                    elseif villager.targetBuilding then
                         -- Go back to workplace
                         villager.state = "going_to_work"
                         villager.targetX = villager.targetBuilding.x
                         villager.targetY = villager.targetBuilding.y
                         villager.path = nil -- Force recalculation of path
                         villager:calculatePath(game, villager.targetX, villager.targetY)
+                    -- Otherwise find new tasks in nearby villages
                     else
-                        -- Only if somehow we don't have a target building, seek new work
-                        villager.state = "seeking_work"
+                        -- Complete task will check for building tasks, work, or return to nearest village
+                        villager:completeTask(game)
                     end
                 end
             else
@@ -217,8 +221,10 @@ function Villager.update(villagers, game, dt)
                     
                     -- Reset builder state
                     villager.buildTask = nil
-                    villager.state = "seeking_work"
                     villager.buildProgress = 0
+                    
+                    -- Check for more building tasks or work
+                    villager:completeTask(game)
                 end
             else
                 -- Building a normal structure
@@ -227,6 +233,9 @@ function Villager.update(villagers, game, dt)
                 if villager.buildProgress >= buildingType.buildTime then
                     -- Building is complete
                     villager:completeBuilding(game)
+                    
+                    -- Check for more building tasks or work
+                    villager:completeTask(game)
                 end
             end
         elseif villager.state == "building_road" then
@@ -377,7 +386,8 @@ function Villager:getMovementSpeed(game)
     end
     
     if self:isOnRoad(game) then
-        return baseSpeed * Config.ROAD_SPEED_MULTIPLIER
+        -- Increase road speed multiplier for faster movement
+        return baseSpeed * 1.75 -- Increased from default road speed multiplier
     else
         return baseSpeed
     end
@@ -396,7 +406,8 @@ function Villager:calculatePath(game, destX, destY)
     end
     
     -- Use the map's pathfinding function to find a path that avoids water and mountains
-    local path = game.map:findPathAvoidingWater(self.x, self.y, destX, destY)
+    -- Allow walking over buildings by not checking building collisions
+    local path = game.map:findPathAvoidingWater(self.x, self.y, destX, destY, true) -- Added parameter to ignore buildings
     
     if not path or #path == 0 then
         -- Could not find a path, return to idle state
@@ -617,9 +628,10 @@ function Villager:completeBuilding(game)
     -- Reset builder state
     self.buildTask = nil
     self.buildProgress = 0
-    self.state = "seeking_work"
     self.targetX = nil
     self.targetY = nil
+    
+    -- Don't set state here - let completeTask handle next task assignment
 end
 
 -- Look for building tasks to handle
@@ -1028,17 +1040,7 @@ function Villager:transportResourceToVillage(game, resourceType, amount)
     if amount <= 0 then return false end
     
     -- Find the nearest village to deliver resources to
-    local nearestVillage = nil
-    local shortestDistance = math.huge
-    
-    -- Look through all villages to find the nearest one
-    for _, village in ipairs(game.villages) do
-        local distance = Utils.distance(self.x, self.y, village.x, village.y)
-        if distance < shortestDistance then
-            shortestDistance = distance
-            nearestVillage = village
-        end
-    end
+    local nearestVillage = self:findNearestVillage(game)
     
     -- If we found a village, set up to transport resources there
     if nearestVillage then
@@ -1049,6 +1051,48 @@ function Villager:transportResourceToVillage(game, resourceType, amount)
         self.resourceAmount = amount
         self.path = nil -- Force path recalculation
         self.needsPathRecalculation = true
+        return true
+    end
+    
+    return false
+end
+
+-- Helper function to find nearest village
+function Villager:findNearestVillage(game)
+    local nearestVillage = nil
+    local shortestDistance = math.huge
+    
+    for _, village in ipairs(game.villages) do
+        local distance = Utils.distance(self.x, self.y, village.x, village.y)
+        if distance < shortestDistance then
+            shortestDistance = distance
+            nearestVillage = village
+        end
+    end
+    
+    return nearestVillage
+end
+
+-- Add helper function to update state after completing tasks
+function Villager:completeTask(game)
+    -- Check for building tasks first (highest priority)
+    if self:findBuildTask(game) then
+        return true
+    end
+    
+    -- Otherwise look for regular work
+    if self:findWork(game) then
+        return true
+    end
+    
+    -- If no tasks found, return to nearest village
+    local nearestVillage = self:findNearestVillage(game)
+    if nearestVillage then
+        self.state = "going_to_work" -- Reuse state for movement
+        self.targetX = nearestVillage.x
+        self.targetY = nearestVillage.y
+        self.path = nil
+        self:calculatePath(game, self.targetX, self.targetY)
         return true
     end
     

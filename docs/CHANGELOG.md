@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Only show building text for non-village buildings on hover or 'i' key press.
 - Made it so that workers and villages work between road connected villages.
 
+### Fixed
+
+- Villagers pathing can move over buildings, prioritize building, return to villages.
+
 ## [0.1.3] - 2025-03-22
 
 ### Added

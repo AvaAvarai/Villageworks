@@ -155,7 +155,24 @@ function Villager.update(villagers, game, dt)
                         villager.targetX = villager.targetBuilding.x
                         villager.targetY = villager.targetBuilding.y
                         villager.path = nil -- Force recalculation of path
-                        villager:calculatePath(game, villager.targetX, villager.targetY)
+                        
+                        -- Use a more reliable path calculation for distant buildings
+                        -- Allow longer calculation time for distant buildings like fishing huts
+                        if Utils.distance(villager.x, villager.y, villager.targetX, villager.targetY) > Config.MAX_BUILD_DISTANCE then
+                            -- For buildings outside normal range (like fishing huts at water's edge)
+                            -- Always use full map pathfinding to ensure a valid return path
+                            local path = game.map:findPathAvoidingWater(villager.x, villager.y, villager.targetX, villager.targetY, true)
+                            if path and #path > 0 then
+                                villager.path = game.map:pathToWorldCoordinates(path)
+                                villager.currentPathIndex = 1
+                            else
+                                -- If still no path, try finding nearest village instead
+                                villager:completeTask(game)
+                            end
+                        else
+                            -- Normal path calculation for nearby buildings
+                            villager:calculatePath(game, villager.targetX, villager.targetY)
+                        end
                     -- Otherwise find new tasks in nearby villages
                     else
                         -- Complete task will check for building tasks, work, or return to nearest village
@@ -1063,7 +1080,27 @@ function Villager:transportResourceToVillage(game, resourceType, amount)
         self.carriedResource = resourceType
         self.resourceAmount = amount
         self.path = nil -- Force path recalculation
-        self.needsPathRecalculation = true
+        
+        -- Special handling for workers at distant buildings like fishing huts
+        if self.targetBuilding and Utils.distance(self.x, self.y, nearestVillage.x, nearestVillage.y) > Config.MAX_BUILD_DISTANCE then
+            -- For distant buildings, calculate path immediately using direct methods
+            -- to ensure villager can find their way to the village
+            local path = game.map:findPathAvoidingWater(self.x, self.y, nearestVillage.x, nearestVillage.y, true)
+            if path and #path > 0 then
+                self.path = game.map:pathToWorldCoordinates(path)
+                self.currentPathIndex = 1
+            else
+                -- If still no path, don't transport
+                self.carriedResource = nil
+                self.resourceAmount = 0
+                self.state = "working"
+                return false
+            end
+        else
+            -- Standard path calculation will happen during update
+            self.needsPathRecalculation = true
+        end
+        
         return true
     end
     

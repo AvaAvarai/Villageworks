@@ -252,7 +252,8 @@ function love.mousepressed(x, y, button)
                     -- Add initial villagers to the new village
                     for i = 1, 2 do
                         local spawnX, spawnY = Utils.randomPositionAround(worldX, worldY, 5, 15)
-                        local villager = Villager.new(spawnX, spawnY, newVillage.id, nil)
+                        local VillagerModule = require("entities/villager")
+                        local villager = VillagerModule.new(spawnX, spawnY, newVillage.id, nil)
                         table.insert(game.villagers, villager)
                         newVillage.villagerCount = newVillage.villagerCount + 1
                     end

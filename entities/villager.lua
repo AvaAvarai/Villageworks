@@ -470,15 +470,13 @@ function Villager:moveAlongPath(game, dt)
 end
 
 function Villager:draw()
-    -- Base color for villager
+    -- Always draw the base villager circle first with consistent size
     love.graphics.setColor(0.2, 0.6, 0.9)
+    love.graphics.circle("fill", self.x, self.y, 4)
     
-    -- Draw carried resources if transporting
+    -- Add specific visual elements based on state
     if self.state == "transporting" and self.carriedResource then
-        -- Draw villager with resource
-        love.graphics.circle("fill", self.x, self.y, 4)
-        
-        -- Draw resource indicator
+        -- Draw resource indicator above villager
         if self.carriedResource == "food" then
             love.graphics.setColor(0.2, 0.8, 0.2)
         elseif self.carriedResource == "wood" then
@@ -490,16 +488,13 @@ function Villager:draw()
         love.graphics.circle("fill", self.x, self.y - 6, 2)
         love.graphics.print(self.resourceAmount, self.x + 5, self.y - 8)
     elseif self.state == "building" or self.state == "building_road" then
-        -- Draw builder
-        love.graphics.setColor(0.8, 0.8, 0)
-        love.graphics.circle("fill", self.x, self.y, 4)
+        -- For builders, add a yellow outline
+        love.graphics.setColor(0.8, 0.8, 0, 0.5)
+        love.graphics.circle("line", self.x, self.y, 6)
         
         -- Draw build progress
         love.graphics.setColor(1, 1, 1, 0.5)
         love.graphics.print(string.format("%.1f", self.buildProgress), self.x + 8, self.y - 8)
-    else
-        -- Regular villager
-        love.graphics.circle("fill", self.x, self.y, 4)
     end
     
     -- Draw line to target if moving
@@ -529,6 +524,24 @@ function Villager:draw()
     -- Show special indicator for lumberyard workers
     if self.workplace and self.workplace.type == "lumberyard" then
         love.graphics.setColor(0.5, 0.3, 0.1)
+        love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
+    end
+    
+    -- Show special indicator for fishers
+    if self.targetBuilding and self.targetBuilding.type == "fishing_hut" then
+        love.graphics.setColor(0.2, 0.4, 0.8)
+        love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
+    end
+    
+    -- Show special indicator for miners
+    if self.targetBuilding and self.targetBuilding.type == "mine" then
+        love.graphics.setColor(0.6, 0.6, 0.6)
+        love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
+    end
+    
+    -- Show special indicator for farmers
+    if self.targetBuilding and self.targetBuilding.type == "farm" then
+        love.graphics.setColor(0.2, 0.8, 0.2)
         love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
     end
 end

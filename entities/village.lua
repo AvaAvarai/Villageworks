@@ -64,7 +64,8 @@ function Village.update(villages, game, dt)
                 
                 -- Create new villager
                 local spawnX, spawnY = Utils.randomPositionAround(village.x, village.y, 5, 20, game.map)
-                local villager = require("entities/villager").new(
+                local VillagerModule = require("entities/villager")
+                local villager = VillagerModule.new(
                     spawnX,
                     spawnY,
                     village.id,

@@ -20,7 +20,7 @@ local Config = {
             buildTime = 5, 
             resource = "stone", 
             workCapacity = 2,
-            description = "Extracts stone resources"
+            description = "Extracts stone resources (must be built adjacent to mountains)"
         },
         lumberyard = { 
             cost = { wood = 10, stone = 10 }, 

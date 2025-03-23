@@ -90,6 +90,11 @@ function love.load()
     Map.init()
     game.map = Map
     
+    -- Debug: Print tileset information to confirm it's loading correctly
+    print("Tileset loaded: " .. Map.tileset:getWidth() .. "x" .. Map.tileset:getHeight() .. " pixels")
+    print("Tile size: " .. Map.tileSize .. " pixels")
+    print("Tile count: 5 (Mountain, Forest, Grass, Road, Water)")
+    
     -- Center camera at the middle of the world
     local worldCenterX = Config.WORLD_WIDTH / 2
     local worldCenterY = Config.WORLD_HEIGHT / 2

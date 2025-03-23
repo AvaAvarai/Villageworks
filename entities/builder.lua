@@ -181,6 +181,11 @@ function Builder:findTask(game)
                     isValid = isValid and game.map:isAdjacentToWater(buildX, buildY)
                 end
                 
+                -- For mines, check mountain adjacency
+                if nextBuildingType == "mine" then
+                    isValid = isValid and game.map:isAdjacentToMountain(buildX, buildY)
+                end
+                
                 -- If position is no longer valid, ignore it and find a new one
                 if not isValid then
                     buildX, buildY = nil, nil
@@ -204,9 +209,22 @@ function Builder:findTask(game)
                             buildX, buildY = nil, nil -- Position not valid for building
                         end
                     end
+                -- Special case for finding mine location near mountains
+                elseif nextBuildingType == "mine" then
+                    buildX, buildY = game.map:findNearestMountainEdge(village.x, village.y)
+                    
+                    if buildX and buildY then
+                        -- Found a good spot near mountain
+                        local isValidPosition = game.map:canBuildAt(buildX, buildY) and 
+                                            game.map:isPositionClearOfBuildings(buildX, buildY, game) and
+                                            game.map:isAdjacentToMountain(buildX, buildY)
+                        if not isValidPosition then
+                            buildX, buildY = nil, nil -- Position not valid for building
+                        end
+                    end
                 end
                 
-                -- If not a lumberyard or couldn't find forest position, use normal placement
+                -- If not a special building or couldn't find special position, use normal placement
                 if not buildX or not buildY then
                     repeat
                         buildX, buildY = Utils.randomPositionAround(village.x, village.y, 30, Config.MAX_BUILD_DISTANCE, game.map)
@@ -220,6 +238,12 @@ function Builder:findTask(game)
                         if nextBuildingType == "fishing_hut" then
                             if not (isValidPosition and game.map:isAdjacentToWater(buildX, buildY)) then
                                 -- Location not suitable for fishing hut
+                                buildX = nil
+                            end
+                        -- Special check for mines - must be adjacent to mountains
+                        elseif nextBuildingType == "mine" then
+                            if not (isValidPosition and game.map:isAdjacentToMountain(buildX, buildY)) then
+                                -- Location not suitable for mine
                                 buildX = nil
                             end
                         else
@@ -237,6 +261,9 @@ function Builder:findTask(game)
                     if nextBuildingType == "fishing_hut" then
                         -- For fishing huts, find a spot adjacent to water that doesn't overlap
                         buildX, buildY = self:findNonOverlappingWaterEdge(game, village.x, village.y)
+                    elseif nextBuildingType == "mine" then
+                        -- For mines, find a spot adjacent to mountains that doesn't overlap
+                        buildX, buildY = self:findNonOverlappingMountainEdge(game, village.x, village.y)
                     elseif nextBuildingType == "lumberyard" then
                         -- For lumberyards, try harder to find a spot near forest
                         buildX, buildY = self:findNonOverlappingForestPosition(game, village.x, village.y)
@@ -261,6 +288,8 @@ function Builder:findTask(game)
                 -- Show message about failure
                 if nextBuildingType == "fishing_hut" then
                     UI.showMessage("Cannot build fishing hut: No suitable water-adjacent locations found")
+                elseif nextBuildingType == "mine" then
+                    UI.showMessage("Cannot build mine: No suitable mountain-adjacent locations found")
                 else
                     UI.showMessage("Cannot build " .. nextBuildingType .. ": No suitable location found")
                 end
@@ -847,6 +876,42 @@ function Builder:findNonOverlappingForestPosition(game, startX, startY)
     end
     
     return nil, nil  -- No suitable position found
+end
+
+-- Find a position adjacent to mountains that does not overlap with other buildings
+function Builder:findNonOverlappingMountainEdge(game, startX, startY)
+    -- First try to use the map's built-in function to find a mountain edge
+    local x, y = game.map:findNearestMountainEdge(startX, startY)
+    
+    if not x or not y then
+        return nil, nil -- No mountain edge found
+    end
+    
+    -- Check if this position overlaps with existing buildings
+    if not game.map:isPositionClearOfBuildings(x, y, game) then
+        -- Try to find an alternative position in expanding circles
+        local maxRadius = Config.MAX_BUILD_DISTANCE
+        local stepSize = 20
+        
+        for radius = stepSize, maxRadius, stepSize do
+            for angle = 0, 2*math.pi, math.pi/8 do
+                local testX = startX + radius * math.cos(angle)
+                local testY = startY + radius * math.sin(angle)
+                
+                -- Check if this position is valid
+                if game.map:isWithinBounds(testX, testY) and 
+                   game.map:canBuildAt(testX, testY) and
+                   game.map:isAdjacentToMountain(testX, testY) and
+                   game.map:isPositionClearOfBuildings(testX, testY, game) then
+                    return testX, testY
+                end
+            end
+        end
+        
+        return nil, nil -- No alternative position found
+    end
+    
+    return x, y
 end
 
 return Builder 

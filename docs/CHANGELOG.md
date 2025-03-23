@@ -8,7 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- Added A* pathfinding algorithm to find paths around water tiles
+- Added mountain terrain features as a natural barrier in the world
+- Added mine buildings that require adjacency to mountains for stone resource extraction
+- Added isAdjacentToMountain and findNearestMountainEdge functions for mine placement
+- Enhanced builders to intelligently find valid locations near mountains for mines
+- Added A* pathfinding algorithm to find paths around water tiles and mountains
 - Added intelligent path following for villagers and builders
 - Added dynamic forest system with natural regrowth mechanics
 - Added forest harvesting for wood resource collection
@@ -17,17 +21,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-- Units (villagers and builders) now path around water instead of walking over it
+- Updated tileset to include mountain tiles at position 1, shifting all other tiles forward
+- Units (villagers and builders) now path around water and mountains instead of walking over them
+- Roads can no longer be built through mountains, adding strategic gameplay around terrain
 - Improved movement logic with waypoint-based pathfinding
 - Units prefer to follow roads when available (lower movement cost)
 - Forest tiles now impact movement with higher traversal costs
 - Implemented natural forest regrowth from adjacent forest tiles
+- Terrain generation follows a logical order (mountains → water → forests) to ensure proper feature distribution
 
 ### Fixed
 
 - Fixed syntax error in map.lua that was preventing the game from starting
 - Fixed forest regrowth logic to work correctly in various edge cases
 - Fixed a critical issue where loading a saved game would generate a new map instead of restoring the saved map
+- Fixed terrain generation to ensure mountains don't get overwritten by later terrain features
 
 ## [0.1.2] - 2025-03-22
 

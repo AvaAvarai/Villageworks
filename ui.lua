@@ -618,9 +618,17 @@ function UI.draw(game)
                 love.graphics.setColor(1, 1, 1, 1)
                 love.graphics.print("OUTSIDE MAP BOUNDARIES!", worldX - 90, worldY - 40)
             else
-                love.graphics.rectangle("fill", worldX - 80, worldY - 45, 160, 30)
-                love.graphics.setColor(1, 1, 1, 1)
-                love.graphics.print("Cannot build on water!", worldX - 70, worldY - 40)
+                -- Check if tile is water or mountain and show appropriate message
+                local tileType = game.map:getTileTypeAtWorld(worldX, worldY)
+                if tileType == game.map.TILE_WATER then
+                    love.graphics.rectangle("fill", worldX - 80, worldY - 45, 160, 30)
+                    love.graphics.setColor(1, 1, 1, 1)
+                    love.graphics.print("Cannot build on water!", worldX - 70, worldY - 40)
+                elseif tileType == game.map.TILE_MOUNTAIN then
+                    love.graphics.rectangle("fill", worldX - 85, worldY - 45, 170, 30)
+                    love.graphics.setColor(1, 1, 1, 1)
+                    love.graphics.print("Cannot build on mountains!", worldX - 75, worldY - 40)
+                end
             end
         end
     end

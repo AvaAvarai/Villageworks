@@ -161,61 +161,71 @@ function UI.update(game, dt)
             }
         else
             local buildingInfo = Config.BUILDING_TYPES[UI.hoveredBuilding.type]
+            
             UI.tooltip = {
                 title = UI.hoveredBuilding.type:gsub("^%l", string.upper),
                 lines = {
                     "Workers: " .. #UI.hoveredBuilding.workers .. "/" .. UI.hoveredBuilding.workersNeeded,
-                    "Produces " .. buildingInfo.resource .. " and money",
-                    "Income: $" .. buildingInfo.income .. " per cycle"
+                    "Produces " .. buildingInfo.resource
                 }
             }
+            
+            -- Add income information if available
+            if buildingInfo.income then
+                table.insert(UI.tooltip.lines, "Income: $" .. buildingInfo.income .. " per cycle")
+            end
         end
     elseif UI.hoveredVillage then
         -- Create tooltip for villages
         local village = UI.hoveredVillage
         local totalPopulation = village.villagerCount
         
+        -- Initialize tooltip
         UI.tooltip = {
             title = village.name,
             lines = {
-                "Population: " .. totalPopulation .. "/" .. village.populationCapacity,
-                "Villagers: " .. village.villagerCount,
-                "Housing needed: " .. (village.needsHousing and "Yes" or "No")
+                "Population: " .. totalPopulation .. "/" .. village.populationCapacity
             }
         }
         
-        -- Add information about needed roads
-        if #village.needsRoads > 0 then
-            local needsLine = "Needs roads: "
-            local first = true
-            local count = 0
-            
-            for i, roadNeed in ipairs(village.needsRoads) do
-                if count < 2 then  -- Show at most 2 road needs
-                    if not first then needsLine = needsLine .. ", " end
-                    if roadNeed.type == "village" then
-                        needsLine = needsLine .. "to " .. roadNeed.target.name
-                    else
-                        needsLine = needsLine .. "to " .. roadNeed.target.type
+        -- Calculate resource production
+        local resourceProduction = {
+            food = 0,
+            wood = 0,
+            stone = 0,
+            money = 0
+        }
+        
+        for _, building in ipairs(game.buildings) do
+            if building.villageId == village.id then
+                -- Calculate resource production potential
+                local buildingInfo = Config.BUILDING_TYPES[building.type]
+                if buildingInfo then
+                    local workersRatio = #building.workers / (buildingInfo.workCapacity or 1)
+                    local productivity = math.min(1.0, workersRatio) -- Cap at 100% productivity
+                    
+                    if buildingInfo.resource then
+                        if buildingInfo.resource == "food" then
+                            resourceProduction.food = resourceProduction.food + productivity
+                        elseif buildingInfo.resource == "wood" then
+                            resourceProduction.wood = resourceProduction.wood + productivity
+                        elseif buildingInfo.resource == "stone" then
+                            resourceProduction.stone = resourceProduction.stone + productivity
+                        end
                     end
-                    first = false
-                    count = count + 1
+                    
+                    if buildingInfo.income then
+                        resourceProduction.money = resourceProduction.money + (buildingInfo.income * productivity)
+                    end
                 end
             end
-            
-            if #village.needsRoads > 2 then
-                needsLine = needsLine .. " and " .. (#village.needsRoads - 2) .. " more"
-            end
-            
-            table.insert(UI.tooltip.lines, needsLine)
         end
         
-        -- Add road building instruction
-        if UI.roadCreationMode and not UI.roadStartVillage then
-            table.insert(UI.tooltip.lines, "Click to start road from this village")
-        elseif UI.roadCreationMode and UI.roadStartVillage and UI.roadStartVillage.id ~= village.id then
-            table.insert(UI.tooltip.lines, "Click to connect road to this village")
-        end
+        -- Add resource production information (just the raw numbers)
+        table.insert(UI.tooltip.lines, "Money: +$" .. string.format("%.0f", resourceProduction.money))
+        table.insert(UI.tooltip.lines, "Food: +" .. string.format("%.1f", resourceProduction.food))
+        table.insert(UI.tooltip.lines, "Wood: +" .. string.format("%.1f", resourceProduction.wood))
+        table.insert(UI.tooltip.lines, "Stone: +" .. string.format("%.1f", resourceProduction.stone))
     end
     
     -- Road creation mode positioning
@@ -820,7 +830,7 @@ function drawEntities(game)
     
     -- Draw all villages
     for _, village in ipairs(game.villages) do
-        village:draw()
+        village:draw(game)
         
         -- Highlight selected village
         if game.selectedVillage and village.id == game.selectedVillage.id then

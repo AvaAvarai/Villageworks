@@ -184,7 +184,7 @@ function drawEntities()
     
     -- Draw all villages
     for _, village in ipairs(game.villages) do
-        village:draw()
+        village:draw(game)
         
         -- Highlight selected village
         if game.selectedVillage and village.id == game.selectedVillage.id then

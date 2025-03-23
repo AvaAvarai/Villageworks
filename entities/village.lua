@@ -28,10 +28,6 @@ function Village.new(x, y)
         villagerCount = 0,   -- Current number of villagers
         populationCapacity = Config.INITIAL_VILLAGE_POPULATION,
         
-        -- Village status display
-        showStats = false,   -- Show population stats on hover
-        hoverTimer = 0,      -- For hover effect
-        
         -- House tracking
         houseCount = 0,      -- Track how many houses this village has
         populationGrowthRate = 0, -- Track how quickly population is growing
@@ -55,20 +51,6 @@ function Village.update(villages, game, dt)
         
         -- Update village needs
         village:updateNeeds(game)
-        
-        -- Update hover timer - convert world position to screen position
-        local screenX, screenY = game.camera:worldToScreen(village.x, village.y)
-        local mouseX, mouseY = love.mouse.getPosition()
-        local mouseDistance = math.sqrt((mouseX - screenX)^2 + (mouseY - screenY)^2)
-        
-        if mouseDistance < 20 then
-            village.showStats = true
-            village.hoverTimer = village.hoverTimer + dt
-            if village.hoverTimer > 1 then village.hoverTimer = 1 end
-        else
-            village.showStats = false
-            village.hoverTimer = 0
-        end
     end
 end
 
@@ -212,15 +194,51 @@ function Village:updateNeeds(game)
     table.sort(self.needsRoads, function(a, b) return a.priority > b.priority end)
 end
 
-function Village:draw()
-    -- Base village color
-    love.graphics.setColor(0, 0.8, 0)
+-- Count total job spots in the village
+function Village:countJobSpots(game)
+    local totalJobSpots = 0
     
-    -- Adjust village color based on housing urgency
-    if self.housingUrgency == "critical" then
-        love.graphics.setColor(0.8, 0.2, 0.2) -- Red for critical housing need
-    elseif self.housingUrgency == "high" then
-        love.graphics.setColor(0.8, 0.6, 0.1) -- Orange for high housing need
+    for _, building in ipairs(game.buildings) do
+        if building.villageId == self.id and building.type ~= "house" then
+            totalJobSpots = totalJobSpots + building.workersNeeded
+        end
+    end
+    
+    return totalJobSpots
+end
+
+-- Count future job spots based on building queue
+function Village:countFutureJobSpots(game)
+    local futureJobSpots = self:countJobSpots(game)
+    local UI = require("ui")
+    
+    -- Check building queue for this village
+    if UI.buildingQueues and UI.buildingQueues[self.id] then
+        for buildingType, count in pairs(UI.buildingQueues[self.id]) do
+            if buildingType ~= "house" and Config.BUILDING_TYPES[buildingType] then
+                futureJobSpots = futureJobSpots + (Config.BUILDING_TYPES[buildingType].workCapacity or 0) * count
+            end
+        end
+    end
+    
+    return futureJobSpots
+end
+
+function Village:draw(game)
+    -- Count job spots for village
+    local currentJobSpots = self:countJobSpots(game)
+    local futureJobSpots = self:countFutureJobSpots(game)
+    
+    -- Set village color based on job spots vs villagers ratio
+    if self.villagerCount >= currentJobSpots then
+        -- Green: more villagers than job spots (good) - all jobs are filled
+        love.graphics.setColor(0.2, 0.8, 0.2)
+    elseif self.villagerCount >= futureJobSpots then
+        -- Yellow: will be more villagers than job spots after queued buildings
+        love.graphics.setColor(0.8, 0.8, 0.2)
+    else
+        -- Red: more job spots than villagers (need more villagers)
+        love.graphics.setColor(0.8, 0.2, 0.2)
     end
     
     love.graphics.circle("fill", self.x, self.y, 15)
@@ -231,43 +249,12 @@ function Village:draw()
     love.graphics.print(self.name, self.x - 20, self.y - 30)
     love.graphics.setFont(currentFont)
     
-    -- Draw population information when hovered
-    if self.showStats then
-        local totalPopulation = self.villagerCount
-        local alpha = math.min(1, self.hoverTimer)
-        
-        -- Draw background
-        love.graphics.setColor(0, 0, 0, 0.7 * alpha)
-        love.graphics.rectangle("fill", self.x + 20, self.y - 40, 130, 80)
-        
-        -- Draw text
-        love.graphics.setColor(1, 1, 1, alpha)
-        love.graphics.print("Village: " .. self.name, 
-            self.x + 25, self.y - 35)
-        love.graphics.print("Population: " .. totalPopulation .. "/" .. self.populationCapacity, 
-            self.x + 25, self.y - 15)
-        love.graphics.print("Houses: " .. self.houseCount .. " (+" .. self.houseCount * Config.BUILDING_TYPES.house.villagerCapacity .. " pop)", 
-            self.x + 25, self.y + 25)
-        
-        -- Population bar
-        local barWidth = 100
-        love.graphics.setColor(0.3, 0.3, 0.3, alpha)
-        love.graphics.rectangle("fill", self.x + 25, self.y + 45, barWidth, 8)
-        
-        -- Filled portion of bar
-        local fillPercent = math.min(1, totalPopulation / self.populationCapacity)
-        
-        -- Color the bar based on how full it is
-        if fillPercent > 0.9 then
-            love.graphics.setColor(0.8, 0.2, 0.2, alpha) -- Red when nearly full
-        elseif fillPercent > 0.7 then
-            love.graphics.setColor(0.8, 0.6, 0.1, alpha) -- Yellow when getting full
-        else
-            love.graphics.setColor(0.2, 0.7, 0.3, alpha) -- Green when plenty of room
-        end
-        
-        love.graphics.rectangle("fill", self.x + 25, self.y + 45, barWidth * fillPercent, 8)
-    end
+    -- Draw small population indicator always visible
+    local totalPopulation = self.villagerCount
+    love.graphics.setColor(1, 1, 1, 0.9)
+    love.graphics.print(totalPopulation .. ":" .. currentJobSpots, self.x - 10, self.y + 17)
+    
+    -- Remove the hover stats display completely
 end
 
 -- Check if this village is connected to another village via roads

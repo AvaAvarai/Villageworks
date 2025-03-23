@@ -108,6 +108,8 @@ The game features a modern, modular code architecture with specialized component
 - Load saved games from the main menu
 - Maps and all entity data are preserved between saves
 
+Save games are saved by timestamp in the location dependent on your OS, listed in this [table](https://love2d.org/wiki/love.filesystem).
+
 ## Technical Architecture
 
 ### Game Structure
@@ -128,7 +130,8 @@ villageworks/
 ├── ui/              # Modular UI components
 │   ├── documentation.lua  # Documentation system
 │   ├── mainmenu.lua       # Main menu interface
-│   └── saveload.lua       # Save/load functionality
+│   └── roads.lua          # Roads drawing system
+|   └── saveload.lua       # Save/load functionality
 ├── main.lua         # Entry point and game loop
 ├── map.lua          # Map generation and rendering
 ├── version.lua      # Version tracking

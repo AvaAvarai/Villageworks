@@ -3,7 +3,6 @@ local Config = require("config")
 local Utils = require("utils")
 local Camera = require("camera")
 local Village = require("entities/village")
-local Builder = require("entities/builder")
 local Building = require("entities/building")
 local Villager = require("entities/villager")
 local Road = require("entities/road")
@@ -14,7 +13,6 @@ local Map = require("map")
 local game = {
     money = Config.STARTING_MONEY,
     villages = {},
-    builders = {},
     buildings = {},
     villagers = {},
     roads = {},
@@ -31,7 +29,6 @@ local game = {
 function game:reset(isLoading)
     self.money = Config.STARTING_MONEY
     self.villages = {}
-    self.builders = {}
     self.buildings = {}
     self.villagers = {}
     self.roads = {}
@@ -152,7 +149,6 @@ function love.update(dt)
     
     -- Update entities with adjusted time
     Village.update(game.villages, game, adjustedDt)
-    Builder.update(game.builders, game, adjustedDt)
     Building.update(game.buildings, game, adjustedDt)
     Villager.update(game.villagers, game, adjustedDt)
     Road.update(game.roads, game, adjustedDt)
@@ -209,17 +205,6 @@ function drawEntities()
         end
     end
     
-    -- Draw all builders
-    for _, builder in ipairs(game.builders) do
-        builder:draw()
-        
-        -- Highlight builders of selected village
-        if game.selectedVillage and builder.villageId == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.5)
-            love.graphics.circle("line", builder.x, builder.y, 7)
-        end
-    end
-    
     -- Draw all villagers
     for _, villager in ipairs(game.villagers) do
         villager:draw()
@@ -263,6 +248,14 @@ function love.mousepressed(x, y, button)
                     -- Create new village
                     local newVillage = Village.new(worldX, worldY)
                     table.insert(game.villages, newVillage)
+                    
+                    -- Add initial villagers to the new village
+                    for i = 1, 2 do
+                        local spawnX, spawnY = Utils.randomPositionAround(worldX, worldY, 5, 15)
+                        local villager = Villager.new(spawnX, spawnY, newVillage.id, nil)
+                        table.insert(game.villagers, villager)
+                        newVillage.villagerCount = newVillage.villagerCount + 1
+                    end
                     
                     -- Select the new village
                     game.selectedVillage = newVillage

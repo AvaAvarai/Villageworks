@@ -608,6 +608,7 @@ end
 
 -- Check if a world position is within map bounds
 function Map:isWithinBounds(worldX, worldY)
+    local tileX, tileY = Map:worldToTile(worldX, worldY)
     -- Get the actual world boundaries in pixels
     local worldBoundaryX = Config.WORLD_WIDTH
     local worldBoundaryY = Config.WORLD_HEIGHT
@@ -920,72 +921,47 @@ function Map:findNearestWaterEdge(startX, startY)
     return closestX, closestY
 end
 
--- Check if a world position is within map bounds
-function Map:isWithinBounds(worldX, worldY)
-    local tileX, tileY = Map:worldToTile(worldX, worldY)
-    return tileX >= 1 and tileY >= 1 and tileX <= Map.width and tileY <= Map.height
-end
-
--- Check if a position is clear of any buildings or villages
-function Map:isPositionClearOfBuildings(worldX, worldY, game, buildingSize)
-    -- Default building size if not specified
-    buildingSize = buildingSize or Config.BUILDING_SIZE
+-- Check if a world position is clear of any existing or planned buildings
+function Map:isPositionClearOfBuildings(worldX, worldY, game)
+    local BUILDING_SPACING = 24 -- Minimum distance between buildings
     
-    -- 1. Check for overlap with existing buildings
+    -- Check existing buildings
     for _, building in ipairs(game.buildings) do
         local distance = Utils.distance(worldX, worldY, building.x, building.y)
-        -- Use a stricter threshold to ensure no overlaps
-        if distance < buildingSize * 2.2 then  -- Increased safety margin
+        if distance < BUILDING_SPACING then
             return false
         end
     end
     
-    -- 2. Check for overlap with villages
+    -- Check villages (need spacing from those too)
     for _, village in ipairs(game.villages) do
         local distance = Utils.distance(worldX, worldY, village.x, village.y)
-        -- Use a stricter threshold for villages
-        if distance < buildingSize * 2 then  -- Increased from 1.5 to 2
+        if distance < BUILDING_SPACING then
             return false
         end
     end
     
-    -- 3. Check for overlap with in-progress buildings being constructed by builders
-    for _, builder in ipairs(game.builders) do
-        -- Check builders that are currently moving to build or are actively building
-        if (builder.state == "building" or builder.state == "moving") and 
-           builder.task and builder.task.x and builder.task.y then
-            local distance = Utils.distance(worldX, worldY, builder.task.x, builder.task.y)
-            if distance < buildingSize * 2.2 then  -- Increased safety margin
+    -- Check for overlap with in-progress buildings being constructed by villagers
+    for _, villager in ipairs(game.villagers) do
+        -- Check villagers that are currently building
+        if (villager.state == "building" or villager.state == "moving_to_build") and
+           villager.buildTask and villager.buildTask.x and villager.buildTask.y then
+            local distance = Utils.distance(worldX, worldY, villager.buildTask.x, villager.buildTask.y)
+            if distance < BUILDING_SPACING then
                 return false
             end
         end
-        -- Also check target coordinates for builders on the move
-        if builder.targetX and builder.targetY then
-            local distance = Utils.distance(worldX, worldY, builder.targetX, builder.targetY)
-            if distance < buildingSize * 2.2 then  -- Increased safety margin
+        
+        -- Also check target coordinates for villagers on the move
+        if villager.targetX and villager.targetY then
+            local distance = Utils.distance(worldX, worldY, villager.targetX, villager.targetY)
+            if distance < BUILDING_SPACING / 2 then
                 return false
             end
         end
     end
     
-    -- 4. Check for overlap with planned buildings in the building queue
-    local UI = require("ui")
-    for _, village in ipairs(game.villages) do
-        local buildQueue = UI.getBuildingQueue(village.id)
-        if buildQueue and buildQueue.plannedPositions then
-            for _, position in ipairs(buildQueue.plannedPositions) do
-                if position.x and position.y then
-                    local distance = Utils.distance(worldX, worldY, position.x, position.y)
-                    if distance < buildingSize * 2.2 then  -- Increased safety margin
-                        return false
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Position is clear if we pass all checks
-    return true
+    return true -- Position is clear
 end
 
 -- Find a path between two points that avoids water tiles (A* algorithm)

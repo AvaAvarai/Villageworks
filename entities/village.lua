@@ -19,14 +19,12 @@ function Village.new(x, y)
         name = name,
         x = x,
         y = y,
-        builderTimer = 5, -- First builder comes faster
+        villagerTimer = Config.BUILDER_SPAWN_TIME, -- First villager comes after normal timer
         needsHousing = true,
         needsResources = {},
         needsRoads = {},  -- Track which villages/buildings we need roads to
         
         -- Population tracking
-        maxBuilders = Config.DEFAULT_MAX_BUILDERS,
-        builderCount = 0,    -- Current number of builders
         villagerCount = 0,   -- Current number of villagers
         populationCapacity = Config.BASE_POPULATION_CAPACITY,
         
@@ -49,32 +47,33 @@ function Village.update(villages, game, dt)
         village:updatePopulationCounts(game)
         
         -- Calculate population growth rate
-        local currentPopulation = village.builderCount + village.villagerCount
+        local currentPopulation = village.villagerCount
         if village.lastPopulation > 0 then
             village.populationGrowthRate = (currentPopulation - village.lastPopulation) / dt
         end
         village.lastPopulation = currentPopulation
         
-        -- Spawn builders based on food availability and population limits
-        village.builderTimer = village.builderTimer - dt
-        if village.builderTimer <= 0 and village:canAddBuilder(game) then
-            village.builderTimer = Config.BUILDER_SPAWN_TIME
+        -- Spawn villagers based on food availability and population limits
+        village.villagerTimer = village.villagerTimer - dt
+        if village.villagerTimer <= 0 and village:canAddVillager(game) then
+            village.villagerTimer = Config.BUILDER_SPAWN_TIME -- Reuse the spawn time config
             
             if game.resources.food >= 5 then
-                -- Check if we can spawn a builder
+                -- Check if we can spawn a villager
                 game.resources.food = game.resources.food - 5
                 
-                -- Create new builder
+                -- Create new villager
                 local spawnX, spawnY = Utils.randomPositionAround(village.x, village.y, 5, 20, game.map)
-                local builder = require("entities/builder").new(
+                local villager = require("entities/villager").new(
                     spawnX,
                     spawnY,
-                    village.id
+                    village.id,
+                    nil -- No home building yet
                 )
-                table.insert(game.builders, builder)
+                table.insert(game.villagers, villager)
                 
-                -- Increment village builder count
-                village.builderCount = village.builderCount + 1
+                -- Increment village villager count
+                village.villagerCount = village.villagerCount + 1
             end
         end
         
@@ -99,17 +98,9 @@ end
 
 function Village:updatePopulationCounts(game)
     -- Reset counts and recalculate
-    self.builderCount = 0
     self.villagerCount = 0
     self.populationCapacity = Config.BASE_POPULATION_CAPACITY  -- Base capacity
     self.houseCount = 0
-    
-    -- Count builders
-    for _, builder in ipairs(game.builders) do
-        if builder.villageId == self.id then
-            self.builderCount = self.builderCount + 1
-        end
-    end
     
     -- Count villagers and calculate capacity from houses
     for _, building in ipairs(game.buildings) do
@@ -128,16 +119,11 @@ function Village:updatePopulationCounts(game)
     end
 end
 
-function Village:canAddBuilder(game)
-    -- Check if we can add more builders to this village
-    local totalPopulation = self.builderCount + self.villagerCount
+function Village:canAddVillager(game)
+    -- Check if we can add more villagers to this village
+    local totalPopulation = self.villagerCount
     
-    -- If we haven't reached max builders yet, allow it
-    if self.builderCount < self.maxBuilders then
-        return true
-    end
-    
-    -- If we have max builders but have population capacity from houses, allow it
+    -- If we have population capacity, allow it
     if totalPopulation < self.populationCapacity then
         return true
     end
@@ -148,7 +134,7 @@ end
 function Village:updateNeeds(game)
     -- Check if village needs houses
     -- If total population is close to capacity or growing quickly, need housing
-    local totalPopulation = self.builderCount + self.villagerCount
+    local totalPopulation = self.villagerCount
     local populationRatio = totalPopulation / self.populationCapacity
     
     -- Need housing if:
@@ -230,7 +216,7 @@ function Village:updateNeeds(game)
                 local distance = Utils.distance(self.x, self.y, village.x, village.y)
                 if distance <= Config.MAX_BUILD_DISTANCE * 2 then
                     -- Higher priority for closer villages with more population
-                    local otherVillagePop = village.builderCount + village.villagerCount
+                    local otherVillagePop = village.villagerCount
                     local priority = otherVillagePop / (distance / 100)
                     
                     table.insert(self.needsRoads, {
@@ -270,7 +256,7 @@ function Village:draw()
     
     -- Draw population information when hovered
     if self.showStats then
-        local totalPopulation = self.builderCount + self.villagerCount
+        local totalPopulation = self.villagerCount
         local alpha = math.min(1, self.hoverTimer)
         
         -- Draw background
@@ -283,8 +269,6 @@ function Village:draw()
             self.x + 25, self.y - 35)
         love.graphics.print("Population: " .. totalPopulation .. "/" .. self.populationCapacity, 
             self.x + 25, self.y - 15)
-        love.graphics.print("Builders: " .. self.builderCount .. "/" .. self.maxBuilders, 
-            self.x + 25, self.y + 5)
         love.graphics.print("Houses: " .. self.houseCount .. " (+" .. self.houseCount * Config.BUILDING_TYPES.house.villagerCapacity .. " pop)", 
             self.x + 25, self.y + 25)
         

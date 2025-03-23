@@ -6,8 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Generalized Villagers to work at nearest needed station, cart goods back to associated village, and return to work.
+- Made a priority for building queue which is now worked by the villagers.
+- Updated UI to reflect Villagers instead of Builders and Villagers.
+
 ### Changed
 
+- Removed builders.
 - Only show building text for non-village buildings on hover or 'i' key press.
 - Made it so that workers and villages work between road connected villages.
 

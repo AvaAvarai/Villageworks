@@ -51,7 +51,7 @@ function Building:updateHouse(game, dt)
         end
         
         -- Only spawn villagers if village has population capacity
-        if village and village.builderCount + village.villagerCount < village.populationCapacity then
+        if village and village.villagerCount < village.populationCapacity then
             self.villagerTimer = self.villagerTimer - dt
             if self.villagerTimer <= 0 then
                 self.villagerTimer = Config.BUILDING_TYPES.house.spawnTime
@@ -80,12 +80,44 @@ function Building:updateWorkplace(game, dt)
         local buildingType = Config.BUILDING_TYPES[self.type]
         local productionMultiplier = #self.workers / buildingType.workCapacity
         
-        -- Generate income
-        game.money = game.money + (buildingType.income * productionMultiplier)
+        -- Determine resource type based on building type
+        local resourceType = nil
+        local resourceAmount = math.floor(1 * productionMultiplier)
         
-        -- Generate resources
-        if buildingType.resource then
-            game.resources[buildingType.resource] = game.resources[buildingType.resource] + (1 * productionMultiplier)
+        if self.type == "farm" or self.type == "fishing_hut" then
+            resourceType = "food"
+        elseif self.type == "mine" then
+            resourceType = "stone"
+        elseif self.type == "lumberyard" then
+            resourceType = "wood"
+        end
+        
+        -- If this is a resource building and we have a valid resource amount
+        if resourceType and resourceAmount > 0 then
+            -- Find a worker that's not already transporting
+            for _, worker in ipairs(self.workers) do
+                if worker.state == "working" and not worker.carriedResource then
+                    -- Find the village this building belongs to
+                    local targetVillage = nil
+                    for _, village in ipairs(game.villages) do
+                        if village.id == self.villageId then
+                            targetVillage = village
+                            break
+                        end
+                    end
+                    
+                    if targetVillage then
+                        -- Always store the building reference so worker can return
+                        worker.targetBuilding = self
+                        
+                        -- Assign transport task to this worker using the standardized method
+                        worker:transportResourceToVillage(game, resourceType, resourceAmount)
+                        
+                        -- Only assign one worker per update
+                        break
+                    end
+                end
+            end
         end
     end
 end

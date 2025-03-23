@@ -173,13 +173,12 @@ function UI.update(game, dt)
     elseif UI.hoveredVillage then
         -- Create tooltip for villages
         local village = UI.hoveredVillage
-        local totalPopulation = village.builderCount + village.villagerCount
+        local totalPopulation = village.villagerCount
         
         UI.tooltip = {
             title = village.name,
             lines = {
                 "Population: " .. totalPopulation .. "/" .. village.populationCapacity,
-                "Builders: " .. village.builderCount .. "/" .. village.maxBuilders,
                 "Villagers: " .. village.villagerCount,
                 "Housing needed: " .. (village.needsHousing and "Yes" or "No")
             }
@@ -704,11 +703,11 @@ function UI.draw(game)
     
     -- Builder count
     love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue for builders
-    local builderLabel = "Builders: "
+    local builderLabel = "Villagers: "
     love.graphics.print(builderLabel, currentXOffset, yPos)
     labelWidth = UI.bigFont:getWidth(builderLabel)
     love.graphics.setColor(1, 1, 1)
-    local builderValue = #game.builders
+    local builderValue = #game.villagers
     love.graphics.print(builderValue, currentXOffset + labelWidth, yPos)
     currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(builderValue) + baseSpacing
     
@@ -842,17 +841,6 @@ function drawEntities(game)
         end
     end
     
-    -- Draw all builders
-    for _, builder in ipairs(game.builders) do
-        builder:draw()
-        
-        -- Highlight builders of selected village
-        if game.selectedVillage and builder.villageId == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.5)
-            love.graphics.circle("line", builder.x, builder.y, 7)
-        end
-    end
-    
     -- Draw all villagers
     for _, villager in ipairs(game.villagers) do
         villager:draw()
@@ -925,7 +913,7 @@ function UI.drawVillageSummary(game)
     -- Draw village list
     love.graphics.setFont(UI.smallFont)
     for i, village in ipairs(game.villages) do
-        local totalPop = village.builderCount + village.villagerCount
+        local totalPop = village.villagerCount
         local text = village.name .. ": " .. totalPop .. "/" .. village.populationCapacity
         
         -- Highlight the village if it's hovered
@@ -1410,11 +1398,11 @@ function UI.incrementBuildingQueue(game, buildingType)
     -- Plan a position for the new building
     local foundPosition = false
     local buildX, buildY
-    local Builder = require("entities/builder")
+    local Villager = require("entities/villager")
     
-    -- Create a temporary builder to use its location finding logic
-    local tempBuilder = Builder.new(villageX, villageY, game.selectedVillage.id)
-    buildX, buildY = Builder.findBuildingLocation(tempBuilder, game, buildingType)
+    -- Create a temporary villager to use its location finding logic
+    local tempVillager = Villager.new(villageX, villageY, game.selectedVillage.id, nil)
+    buildX, buildY = tempVillager:findBuildingLocation(game, buildingType, game.selectedVillage)
     
     if buildX and buildY then
         -- Store the planned position

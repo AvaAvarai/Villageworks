@@ -48,11 +48,27 @@ function Builder.update(builders, game, dt)
         elseif builder.state == "building" then
             -- Build the structure
             builder.progress = builder.progress + dt
-            local buildingType = Config.BUILDING_TYPES[builder.task.type]
             
-            if builder.progress >= buildingType.buildTime then
-                -- Building is complete
-                builder:completeBuilding(game)
+            if builder.task.type == "build_road" then
+                -- Building a road
+                if builder.progress >= builder.task.totalWorkNeeded then
+                    -- Complete the road
+                    local map = require("map")
+                    map:completePlannedRoad(builder.task.tileX, builder.task.tileY)
+                    
+                    -- Reset builder state
+                    builder.task = nil
+                    builder.state = "idle"
+                    builder.progress = 0
+                end
+            else
+                -- Building a normal structure
+                local buildingType = Config.BUILDING_TYPES[builder.task.type]
+                
+                if builder.progress >= buildingType.buildTime then
+                    -- Building is complete
+                    builder:completeBuilding(game)
+                end
             end
         elseif builder.state == "building_road" then
             -- Building a road
@@ -133,6 +149,41 @@ function Builder.update(builders, game, dt)
 end
 
 function Builder:findTask(game)
+    -- First try to find tasks from the global task list
+    if game.builderTasks and #game.builderTasks > 0 then
+        local bestTaskIndex = nil
+        local bestPriority = -1
+        local bestDistance = math.huge
+        
+        -- Try to find close tasks with higher priority
+        for i, task in ipairs(game.builderTasks) do
+            -- Calculate distance to task
+            local distance = Utils.distance(self.x, self.y, task.x, task.y)
+            
+            -- If better priority or closer at same priority
+            if (task.priority > bestPriority) or 
+               (task.priority == bestPriority and distance < bestDistance) then
+                bestTaskIndex = i
+                bestPriority = task.priority
+                bestDistance = distance
+            end
+        end
+        
+        -- If found a task, assign it to this builder
+        if bestTaskIndex then
+            self.task = game.builderTasks[bestTaskIndex]
+            table.remove(game.builderTasks, bestTaskIndex)
+            
+            -- Set target location and state
+            self.targetX = self.task.x
+            self.targetY = self.task.y
+            self.state = "moving"
+            self.progress = 0
+            
+            return -- Task found, exit the function
+        end
+    end
+    
     -- First try to find the village this builder belongs to
     local village = nil
     for _, v in ipairs(game.villages) do

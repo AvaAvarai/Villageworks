@@ -10,8 +10,14 @@ Map.TILE_GRASS = 3
 Map.TILE_ROAD = 4
 Map.TILE_WATER = 5
 
+-- Keep track of planned road tiles
+Map.plannedRoads = {} -- Format: {[y] = {[x] = true}}
+
 -- Initialize the map system
 function Map.init()
+    -- Empty planned roads table
+    Map.plannedRoads = {}
+    
     -- Load tileset
     Map.tileset = love.graphics.newImage("data/tiles.png")
     
@@ -687,18 +693,33 @@ function Map:draw(camera)
             -- Count the tile type being drawn
             drawnTiles[tileType] = drawnTiles[tileType] + 1
             
-            -- Set color based on tile type (full brightness for all tiles)
-            love.graphics.setColor(1, 1, 1)
+            -- Set color (full brightness for regular tiles)
+            love.graphics.setColor(1, 1, 1, 1)
             
-            -- Draw the appropriate tile from the tileset
+            -- Draw the normal tile
             love.graphics.draw(
                 Map.tileset,
                 Map.quads[tileType],
                 worldX,
                 worldY
             )
+            
+            -- If this is a planned road, draw the road tile with transparency on top
+            if Map:isPlannedRoad(x, y) then
+                -- Draw the road tile with transparency
+                love.graphics.setColor(1, 1, 1, 0.5)
+                love.graphics.draw(
+                    Map.tileset,
+                    Map.quads[Map.TILE_ROAD],
+                    worldX,
+                    worldY
+                )
+            end
         end
     end
+    
+    -- Reset color to full opacity
+    love.graphics.setColor(1, 1, 1, 1)
     
     -- Optional debug mode: print out what was drawn in this frame
     if false then -- Set to true to enable debug output
@@ -1439,6 +1460,109 @@ function Map:countSpecificTile(tileType, tileName)
     
     print(tileName .. " tiles: " .. count .. " (" .. percentage .. "%)")
     return count, percentage
+end
+
+-- Mark a location as a planned road
+function Map:planRoad(tileX, tileY)
+    -- Make sure the y table exists
+    if not Map.plannedRoads[tileY] then
+        Map.plannedRoads[tileY] = {}
+    end
+    
+    -- Mark this tile as a planned road
+    Map.plannedRoads[tileY][tileX] = true
+end
+
+-- Check if a tile is a planned road
+function Map:isPlannedRoad(tileX, tileY)
+    return Map.plannedRoads[tileY] and Map.plannedRoads[tileY][tileX] == true
+end
+
+-- Complete a planned road by setting the actual tile to road
+function Map:completePlannedRoad(tileX, tileY)
+    -- Check if this is actually a planned road
+    if self:isPlannedRoad(tileX, tileY) then
+        -- Set the tile to a road
+        self:setTileType(tileX, tileY, Map.TILE_ROAD)
+        
+        -- Remove it from the planned roads table
+        Map.plannedRoads[tileY][tileX] = nil
+        
+        return true
+    end
+    
+    return false
+end
+
+-- Plan a road at world coordinates
+function Map:planRoadAtWorld(worldX, worldY)
+    local tileX, tileY = self:worldToTile(worldX, worldY)
+    
+    -- Check if the tile is buildable (not water, mountain, or already a road)
+    local tileType = self:getTileType(tileX, tileY)
+    if tileType ~= Map.TILE_WATER and tileType ~= Map.TILE_MOUNTAIN and tileType ~= Map.TILE_ROAD then
+        self:planRoad(tileX, tileY)
+        return true
+    end
+    
+    return false
+end
+
+-- Complete a planned road at world coordinates
+function Map:completePlannedRoadAtWorld(worldX, worldY)
+    local tileX, tileY = self:worldToTile(worldX, worldY)
+    return self:completePlannedRoad(tileX, tileY)
+end
+
+-- Plan a path of roads between two points
+function Map:planRoadPath(startX, startY, endX, endY)
+    local tileStartX, tileStartY = self:worldToTile(startX, startY)
+    local tileEndX, tileEndY = self:worldToTile(endX, endY)
+    
+    -- Use a simple line algorithm to create a path
+    local dx = math.abs(tileEndX - tileStartX)
+    local dy = math.abs(tileEndY - tileStartY)
+    local sx = tileStartX < tileEndX and 1 or -1
+    local sy = tileStartY < tileEndY and 1 or -1
+    local err = dx - dy
+    
+    local x, y = tileStartX, tileStartY
+    while x ~= tileEndX or y ~= tileEndY do
+        -- Plan a road at this tile if not water or mountain or already a road
+        local tileType = self:getTileType(x, y)
+        if tileType ~= Map.TILE_WATER and tileType ~= Map.TILE_MOUNTAIN and tileType ~= Map.TILE_ROAD then
+            self:planRoad(x, y)
+        end
+        
+        local e2 = 2 * err
+        if e2 > -dy then
+            err = err - dy
+            x = x + sx
+        end
+        if e2 < dx then
+            err = err + dx
+            y = y + sy
+        end
+    end
+    
+    -- Plan the end tile if not water or mountain
+    local tileType = self:getTileType(tileEndX, tileEndY)
+    if tileType ~= Map.TILE_WATER and tileType ~= Map.TILE_MOUNTAIN and tileType ~= Map.TILE_ROAD then
+        self:planRoad(tileEndX, tileEndY)
+    end
+end
+
+-- Get all planned roads as a list of tile coordinates
+function Map:getAllPlannedRoads()
+    local result = {}
+    
+    for y, row in pairs(Map.plannedRoads) do
+        for x, _ in pairs(row) do
+            table.insert(result, {x = x, y = y})
+        end
+    end
+    
+    return result
 end
 
 return Map

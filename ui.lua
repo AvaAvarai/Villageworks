@@ -4,6 +4,7 @@ local Documentation = require("ui.documentation")
 local SaveLoad = require("ui.saveload")
 local MainMenu = require("ui.mainmenu")
 local Roads = require("ui.roads")
+local Tooltip = require("ui.tooltip")
 
 local UI = {}
 
@@ -53,6 +54,7 @@ function UI.init()
     SaveLoad.init(UI)
     MainMenu.init(UI)
     Roads.init(UI)
+    Tooltip.init(UI)
     
     -- Pause menu options
     UI.pauseMenuOptions = {
@@ -132,98 +134,8 @@ function UI.update(game, dt)
         end
     end
     
-    -- Update tooltip for buildings
-    UI.tooltip = nil
-    if UI.hoveredBuilding then
-        if UI.hoveredBuilding.type == "house" then
-            -- Find the village this house belongs to
-            local village = nil
-            for _, v in ipairs(game.villages) do
-                if v.id == UI.hoveredBuilding.villageId then
-                    village = v
-                    break
-                end
-            end
-            
-            local villageText = village and (village.name) or "Unknown village"
-            
-            UI.tooltip = {
-                title = "House",
-                lines = {
-                    "Villagers: " .. UI.hoveredBuilding.currentVillagers .. "/" .. UI.hoveredBuilding.villagerCapacity,
-                    "Spawns a new villager every " .. Config.BUILDING_TYPES.house.spawnTime .. " seconds",
-                    "Belongs to: " .. villageText,
-                    "+2 population capacity"
-                }
-            }
-        else
-            local buildingInfo = Config.BUILDING_TYPES[UI.hoveredBuilding.type]
-            
-            UI.tooltip = {
-                title = UI.hoveredBuilding.type:gsub("^%l", string.upper),
-                lines = {
-                    "Workers: " .. #UI.hoveredBuilding.workers .. "/" .. UI.hoveredBuilding.workersNeeded,
-                    "Produces " .. buildingInfo.resource
-                }
-            }
-            
-            -- Add income information if available
-            if buildingInfo.income then
-                table.insert(UI.tooltip.lines, "Income: $" .. buildingInfo.income .. " per cycle")
-            end
-        end
-    elseif UI.hoveredVillage then
-        -- Create tooltip for villages
-        local village = UI.hoveredVillage
-        local totalPopulation = village.villagerCount
-        
-        -- Initialize tooltip
-        UI.tooltip = {
-            title = village.name,
-            lines = {
-                "Population: " .. totalPopulation .. "/" .. village.populationCapacity
-            }
-        }
-        
-        -- Calculate resource production
-        local resourceProduction = {
-            food = 0,
-            wood = 0,
-            stone = 0,
-            money = 0
-        }
-        
-        for _, building in ipairs(game.buildings) do
-            if building.villageId == village.id then
-                -- Calculate resource production potential
-                local buildingInfo = Config.BUILDING_TYPES[building.type]
-                if buildingInfo then
-                    local workersRatio = #building.workers / (buildingInfo.workCapacity or 1)
-                    local productivity = math.min(1.0, workersRatio) -- Cap at 100% productivity
-                    
-                    if buildingInfo.resource then
-                        if buildingInfo.resource == "food" then
-                            resourceProduction.food = resourceProduction.food + productivity
-                        elseif buildingInfo.resource == "wood" then
-                            resourceProduction.wood = resourceProduction.wood + productivity
-                        elseif buildingInfo.resource == "stone" then
-                            resourceProduction.stone = resourceProduction.stone + productivity
-                        end
-                    end
-                    
-                    if buildingInfo.income then
-                        resourceProduction.money = resourceProduction.money + (buildingInfo.income * productivity)
-                    end
-                end
-            end
-        end
-        
-        -- Add resource production information (just the raw numbers)
-        table.insert(UI.tooltip.lines, "Money: +$" .. string.format("%.0f", resourceProduction.money))
-        table.insert(UI.tooltip.lines, "Food: +" .. string.format("%.1f", resourceProduction.food))
-        table.insert(UI.tooltip.lines, "Wood: +" .. string.format("%.1f", resourceProduction.wood))
-        table.insert(UI.tooltip.lines, "Stone: +" .. string.format("%.1f", resourceProduction.stone))
-    end
+    -- Update tooltip through Tooltip module
+    Tooltip.update(game)
     
     -- Update road-related state through Roads module
     Roads.update(game, dt)
@@ -648,9 +560,9 @@ function UI.draw(game)
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)
     
-    -- Draw tooltip
-    if UI.tooltip then
-        UI.drawTooltip(UI.tooltip, love.mouse.getX(), love.mouse.getY())
+    -- Draw tooltip using Tooltip module
+    if Tooltip.getActiveTooltip() then
+        Tooltip.draw(love.mouse.getX(), love.mouse.getY())
     end
     
     -- Draw build menu if active
@@ -775,40 +687,6 @@ function drawEntities(game)
             love.graphics.setColor(1, 1, 0, 0.5)
             love.graphics.circle("line", villager.x, villager.y, 6)
         end
-    end
-end
-
--- Draw a tooltip
-function UI.drawTooltip(tooltip, x, y)
-    -- Set up dimensions
-    local width = 200
-    local lineHeight = 20
-    local padding = 10
-    local height = padding * 2 + lineHeight * (#tooltip.lines + 1)
-    
-    -- Adjust position to keep on screen
-    if x + width > love.graphics.getWidth() then
-        x = love.graphics.getWidth() - width - 5
-    end
-    if y + height > love.graphics.getHeight() then
-        y = love.graphics.getHeight() - height - 5
-    end
-    
-    -- Draw background
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle("fill", x, y, width, height)
-    love.graphics.setColor(1, 1, 1, 0.5)
-    love.graphics.rectangle("line", x, y, width, height)
-    
-    -- Draw title
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.setFont(UI.font)
-    love.graphics.print(tooltip.title, x + padding, y + padding)
-    
-    -- Draw lines
-    love.graphics.setFont(UI.smallFont)
-    for i, line in ipairs(tooltip.lines) do
-        love.graphics.print(line, x + padding, y + padding + lineHeight * i)
     end
 end
 

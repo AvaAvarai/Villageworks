@@ -1,6 +1,8 @@
 # Villageworks
 
-Villageworks is an in-development open source free to play civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE. Current version: 0.1.4.
+Villageworks is an in-development open source civilization management game where you create and manage a network of thriving settlements, written in Lua using the LÖVE game engine. Current version: 0.1.4.
+
+## Screenshots
 
 Main menu: ![main menu screenshot](data/main_menu.png)
 
@@ -14,22 +16,20 @@ Gameplay: ![gameplay screenshot](docs/screenshot.png)
 - Villageworks In-Dev Demo: <https://youtu.be/5IYsQdmNwtY>
 - Villageworks Initial Dev Demo: <https://youtu.be/KV8QX6YbN38>
 
-## Overview
+## Game Overview
 
-Villageworks is a management simulation where you take on the role of a benevolent overseer guiding the development of a human civilization. Create multiple villages bearing historical names, construct buildings strategically, establish resource production chains, and connect your settlements with road networks to build a thriving inter-village trading society.
-
-The game features a modern, modular code architecture with specialized components for UI, entity management, and game state serialization to ensure maintainability and extensibility.
+Villageworks is a management simulation where you take on the role of a benevolent overseer guiding the development of a human civilization. Create multiple villages bearing procedurally-generated historical names, construct buildings strategically to access the procedurally generated mountain, water, forest areas, establish resource production chains, and connect your settlements with road networks to build a thriving inter-village trading society.
 
 ## Key Features
 
 - **Settlement System**: Create multiple villages, each with a unique historical name
-- **Autonomous AI**: Villagers and builders make intelligent decisions based on current needs and priorities
-- **Resource Economy**: Strategic management of food, wood, stone, and currency
-- **Infrastructure Development**: Plan and build roads to connect villages and enhance resource transport
+- **Procedurally Generated**: Cellular automata to generate landscapes and historical names selected from for village names
+- **Autonomous AI**: Villagers and traders make their own decisions based on current needs and priorities
+- **Resource Economy**: Strategic management of food, wood, stone, and money currency
+- **Road Planning**: Plan and build roads to connect villages and enhance resource transport
 - **Dynamic Growth**: Watch as villages develop organically based on resource availability and population needs
 - **Save & Load**: Preserve your progress with a complete game state saving system
 - **Visual Indicators**: Color-coded visual feedback helps quickly identify settlement needs
-- **Modern UI**: Intuitive, modular interface with documentation, customizable menus, and smooth transitions
 
 ## Installation
 
@@ -194,4 +194,4 @@ This project is licensed under the MIT License, see the [LICENSE](./LICENSE) fil
 
 ---
 
-*For issues or feedback, please submit through GitHub issues.*
+*For issues (first check if known already in ./docs/BUGS.md) or to submit feedback, please submit through GitHub issues.*

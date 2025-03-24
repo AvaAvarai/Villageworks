@@ -105,7 +105,7 @@ function MainMenu.drawBackground()
     -- Bottom section
     love.graphics.setColor(0, 0, 0, 0.3)
     love.graphics.rectangle("fill", 0, screenHeight * 2/3, screenWidth, screenHeight/3)
-    
+
     -- Draw title with a dramatic glow effect
     love.graphics.setFont(UI.titleFont)
     local title = "Villageworks"
@@ -128,11 +128,15 @@ function MainMenu.drawBackground()
         love.graphics.print(title, (screenWidth - titleWidth) / 2 + i, 80 + i)
     end
     
+    -- Draw a backdrop for the title
+    love.graphics.setColor(0, 0, 0, 0.33)
+    love.graphics.rectangle("fill", 0, 82, screenWidth, 85)
+
     -- Draw main title with a subtle gradient effect
     local r, g, b = 1, 1, 1
     love.graphics.setColor(r, g, b, 1)
     love.graphics.print(title, (screenWidth - titleWidth) / 2, 80)
-    
+
     -- Draw tagline with glow effect
     love.graphics.setFont(UI.bigFont)  -- Larger font for tagline
     local tagline = "Create and manage a network of thriving settlements."

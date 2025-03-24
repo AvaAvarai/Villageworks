@@ -394,16 +394,6 @@ function MainMenu.drawWorldSizeMenu()
             love.graphics.setColor(0.7, 0.7, 0.7)
             love.graphics.print(sizeInfo.description, menuX + 35, buttonY + 48)
             
-            -- Start button for this size
-            if isHovered or isSelected then
-                love.graphics.setColor(0.2, 0.7, 0.3, 0.8)
-            else
-                love.graphics.setColor(0.2, 0.6, 0.3, 0.6)
-            end
-            love.graphics.rectangle("fill", menuX + buttonWidth - 50, buttonY + buttonHeight - 30, 60, 25, 4, 4)
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.print("Start", menuX + buttonWidth - 40, buttonY + buttonHeight - 27)
-            
             -- Selection indicator
             if isSelected then
                 love.graphics.setColor(1, 1, 1)

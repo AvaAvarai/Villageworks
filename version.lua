@@ -2,8 +2,8 @@
 local Version = {
     major = 0,
     minor = 1,
-    patch = 3,
-    releaseDate = "2025-03-22"
+    patch = 4,
+    releaseDate = "2025-03-24"
 }
 
 -- Get a formatted version string

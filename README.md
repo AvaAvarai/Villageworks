@@ -1,6 +1,6 @@
 # Villageworks
 
-Villageworks is an in-dev civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE. Current version: 0.1.3.
+Villageworks is an in-development open source free to play civilization management game where you create and manage a network of thriving settlements built in Lua using LÖVE. Current version: 0.1.4.
 
 Main menu: ![main menu screenshot](data/main_menu.png)
 
@@ -137,7 +137,7 @@ villageworks/
 │   ├── mainmenu.lua       # Main menu interface
 │   ├── roads.lua          # Roads drawing system
 │   ├── saveload.lua       # Save/load functionality
-|   └── tooltip.lua        # Tooltip overlays
+│   └── tooltip.lua        # Tooltip overlays
 ├── main.lua         # Entry point and game loop
 ├── map.lua          # Map generation and rendering
 ├── version.lua      # Version tracking
@@ -147,6 +147,7 @@ villageworks/
 ├── data/
 │   ├── village_names.lua  # Historical village names
 │   ├── background.png     # Menu background
+│   ├── main_menu.png      # Main menu screenshot
 │   └── tiles.png          # Tileset graphics
 ├── docs/            # Documentation files
 │   ├── GAME_GUIDE.md      # How to play guide
@@ -155,7 +156,7 @@ villageworks/
 ├── saves/           # Directory for saved games
 └── entities/
     ├── village.lua    # Village entity
-    ├── builder.lua    # Builder entity
+    ├── trader.lua     # Trader entity
     ├── building.lua   # Buildings
     ├── villager.lua   # Villager entity
     └── road.lua       # Road system
@@ -173,11 +174,12 @@ villageworks/
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License, see the [LICENSE](./LICENSE) file for details.
 
 ## Acknowledgements
 
-- Using the [Serpent](https://github.com/pkulchenko/serpent) serializer available under the MIT License.
+- Using the [LÖVE](https://love2d.org/) game engine available under the zlib/libpng license.
+- Using the [Serpent](https://github.com/pkulchenko/serpent) Lua serializer available under the MIT License.
 - Tilesets and artwork used which are available for public usage under public domain:
   - [Simple Tiles](https://opengameart.org/content/simple-tiles)
   - [32x32_Tree](https://opengameart.org/content/32x32tree)
@@ -186,4 +188,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Created with LÖVE. For issues or feedback, please submit through GitHub issues.*
+*For issues or feedback, please submit through GitHub issues.*

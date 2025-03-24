@@ -4,7 +4,19 @@ All notable changes to Villageworks will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+### Addeded
+
+- future
+
+### Changed
+
+- future
+
+### Fixed
+
+- future
+
+## [0.1.4] - 2025-03-24
 
 ### Added
 
@@ -33,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Fixed build menu not showing on large window sizes.
 - Resource ui layout fix for added trader unit.
 - Draw villages over buildings so their titles aren't obscured by buildings.
 - Save serialization nil checks and safer entity list handeling.

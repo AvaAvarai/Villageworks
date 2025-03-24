@@ -168,6 +168,8 @@ villageworks/
 
 ## Future Plans
 
+- Boat units
+- Make traders use A* pathfinding
 - Seasons and weather
 - Enhanced villager behavior
 - Village economy management

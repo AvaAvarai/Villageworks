@@ -5,6 +5,7 @@ local Camera = require("camera")
 local Village = require("entities/village")
 local Building = require("entities/building")
 local Villager = require("entities/villager")
+local Trader = require("entities/trader")
 local Road = require("entities/road")
 local UI = require("ui")
 local Map = require("map")
@@ -15,6 +16,7 @@ local game = {
     villages = {},
     buildings = {},
     villagers = {},
+    traders = {},  -- Array to hold trader entities
     roads = {},
     resources = Config.STARTING_RESOURCES,
     selectedEntity = nil,
@@ -31,6 +33,7 @@ function game:reset(isLoading)
     self.villages = {}
     self.buildings = {}
     self.villagers = {}
+    self.traders = {}  -- Initialize empty traders array
     self.roads = {}
     self.resources = {
         wood = Config.STARTING_RESOURCES.wood,
@@ -66,6 +69,16 @@ function game:reset(isLoading)
     Road.buildRoadsOnMap(self.roads, self.map)
 end
 
+-- Helper function to get a village name by ID
+function game:getVillageName(villageId)
+    for _, village in ipairs(self.villages) do
+        if village.id == villageId then
+            return village.name
+        end
+    end
+    return "Unknown Village"
+end
+
 function love.load()
     love.graphics.setBackgroundColor(0.2, 0.6, 0.1) -- Green grass background
     
@@ -89,6 +102,9 @@ function love.load()
     Map.init()
     game.map = Map
     
+    -- Initialize game state tables
+    game.traders = {}  -- Ensure traders array is initialized
+    
     -- Debug: Print tileset information to confirm it's loading correctly
     print("Tileset loaded: " .. Map.tileset:getWidth() .. "x" .. Map.tileset:getHeight() .. " pixels")
     print("Tile size: " .. Map.tileSize .. " pixels")
@@ -107,6 +123,9 @@ function love.load()
     
     -- Ensure road tiles are in sync with road entities on initial load
     Road.buildRoadsOnMap(game.roads, game.map)
+    
+    -- Print debug info about available entities
+    print("Game initialized with:", #game.traders, "traders,", #game.villagers, "villagers,", #game.buildings, "buildings")
 end
 
 function love.update(dt)
@@ -153,6 +172,11 @@ function love.update(dt)
     Villager.update(game.villagers, game, adjustedDt)
     Road.update(game.roads, game, adjustedDt)
     Map.update(adjustedDt) -- Update map for forest regrowth
+    
+    -- Update traders
+    if game.traders then
+        Trader.update(game.traders, game, adjustedDt)
+    end
 end
 
 function love.draw()
@@ -172,47 +196,6 @@ function drawGrid()
     for x = startX, endX, Config.TILE_SIZE do
         for y = startY, endY, Config.TILE_SIZE do
             love.graphics.rectangle("line", x, y, Config.TILE_SIZE, Config.TILE_SIZE)
-        end
-    end
-end
-
-function drawEntities()
-    -- Draw roads first (so they appear behind everything else)
-    for _, road in ipairs(game.roads) do
-        road:draw()
-    end
-    
-    -- Draw all villages
-    for _, village in ipairs(game.villages) do
-        village:draw(game)
-        
-        -- Highlight selected village
-        if game.selectedVillage and village.id == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.3)
-            love.graphics.circle("line", village.x, village.y, 18)
-            love.graphics.circle("line", village.x, village.y, 20)
-        end
-    end
-    
-    -- Draw all buildings
-    for _, building in ipairs(game.buildings) do
-        building:draw(UI)
-        
-        -- Highlight buildings of selected village
-        if game.selectedVillage and building.villageId == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.2)
-            love.graphics.rectangle("line", building.x - 12, building.y - 12, 24, 24)
-        end
-    end
-    
-    -- Draw all villagers
-    for _, villager in ipairs(game.villagers) do
-        villager:draw()
-        
-        -- Highlight villagers of selected village
-        if game.selectedVillage and villager.villageId == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.5)
-            love.graphics.circle("line", villager.x, villager.y, 6)
         end
     end
 end

@@ -24,6 +24,13 @@ function Building.new(x, y, buildingType, villageId)
         building.currentVillagers = 0
     end
     
+    -- Market-specific properties
+    if buildingType == "market" then
+        building.traderTimer = Config.BUILDING_TYPES.market.spawnTime
+        building.traderCapacity = Config.BUILDING_TYPES.market.traderCapacity
+        building.currentTraders = 0
+    end
+    
     return building
 end
 
@@ -32,6 +39,9 @@ function Building.update(buildings, game, dt)
         -- Houses spawn villagers
         if building.type == "house" then
             building:updateHouse(game, dt)
+        -- Markets spawn traders
+        elseif building.type == "market" then
+            building:updateMarket(game, dt)
         else
             -- Resource buildings generate income if they have workers
             building:updateWorkplace(game, dt)
@@ -70,6 +80,74 @@ function Building:updateHouse(game, dt)
                 table.insert(game.villagers, newVillager)
             end
         end
+    end
+end
+
+function Building:updateMarket(game, dt)
+    -- Calculate how many traders are already out from this market
+    if game.traders then
+        self.currentTraders = 0
+        for _, trader in ipairs(game.traders) do
+            if trader.marketId == self.id then
+                self.currentTraders = self.currentTraders + 1
+            end
+        end
+    end
+    
+    -- Debug current trader status
+    print("Market in " .. game:getVillageName(self.villageId) .. " has " .. self.currentTraders .. "/" .. self.traderCapacity .. " traders")
+    
+    -- Markets spawn traders if we're below capacity
+    if self.currentTraders < self.traderCapacity then
+        -- Check if there's at least one other market to trade with
+        local hasOtherMarket = false
+        local otherMarketCount = 0
+        
+        for _, building in ipairs(game.buildings) do
+            if building.type == "market" and building.id ~= self.id then
+                hasOtherMarket = true
+                otherMarketCount = otherMarketCount + 1
+            end
+        end
+        
+        print("Found " .. otherMarketCount .. " other markets for trading")
+        
+        -- We allow spawning traders even without other markets for better UX
+        -- They'll just return home if no other markets exist
+        self.traderTimer = self.traderTimer - dt
+        print("Trader timer: " .. self.traderTimer)
+        
+        if self.traderTimer <= 0 then
+            print("Spawning new trader!")
+            self.traderTimer = Config.BUILDING_TYPES.market.spawnTime
+            self.currentTraders = self.currentTraders + 1
+            
+            -- Create a new trader
+            local TraderModule = require("entities/trader")
+            local spawnX, spawnY = Utils.randomPositionAround(self.x, self.y, 5, 10, game.map)
+            local newTrader = TraderModule.new(
+                spawnX,
+                spawnY,
+                self.id,    -- Market ID
+                self.villageId
+            )
+            
+            -- Make sure the traders table exists
+            if not game.traders then
+                game.traders = {}
+            end
+            
+            table.insert(game.traders, newTrader)
+            
+            -- Show a message
+            if hasOtherMarket then
+                UI.showMessage("Trader sent from " .. game:getVillageName(self.villageId) .. " market to trade with other markets")
+            else
+                UI.showMessage("Trader exploring from " .. game:getVillageName(self.villageId) .. " market (needs more markets)")
+            end
+        end
+    else
+        print("Market already at trader capacity")
     end
 end
 
@@ -152,6 +230,8 @@ function Building:draw(UI)
         love.graphics.setColor(0.9, 0.7, 0.5)
     elseif self.type == "fishing_hut" then
         love.graphics.setColor(0.2, 0.4, 0.8)
+    elseif self.type == "market" then
+        love.graphics.setColor(1, 0.7, 0.1) -- Gold/yellow for market
     end
     
     -- Draw building
@@ -177,14 +257,14 @@ function Building:draw(UI)
             name = "House"
         elseif self.type == "farm" then
             name = "Farm"
+        elseif self.type == "market" then
+            name = "Market"
         end
         love.graphics.print(name, self.x - 10, self.y - 30)
         love.graphics.setFont(currentFont)
         
-        -- Display workers or villagers
-        if self.type ~= "house" then
-            love.graphics.print(#self.workers .. "/" .. self.workersNeeded, self.x - 10, self.y + 15)
-        else
+        -- Display workers or villagers or traders
+        if self.type == "house" then
             love.graphics.print(self.currentVillagers .. "/" .. self.villagerCapacity, self.x - 10, self.y + 15)
             
             -- If villager is being produced, show timer
@@ -193,6 +273,17 @@ function Building:draw(UI)
                 love.graphics.setColor(0.2, 0.7, 0.9, 0.7)
                 love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
             end
+        elseif self.type == "market" then
+            love.graphics.print(self.currentTraders .. "/" .. self.traderCapacity, self.x - 10, self.y + 15)
+            
+            -- If trader is being produced, show timer
+            if self.currentTraders < self.traderCapacity then
+                local percentDone = 1 - (self.traderTimer / Config.BUILDING_TYPES.market.spawnTime)
+                love.graphics.setColor(1, 0.7, 0.1, 0.7)
+                love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
+            end
+        else
+            love.graphics.print(#self.workers .. "/" .. self.workersNeeded, self.x - 10, self.y + 15)
         end
     end
 end

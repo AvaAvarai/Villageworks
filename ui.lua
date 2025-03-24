@@ -423,7 +423,7 @@ function UI.draw(game)
     local availableWidth = screenWidth - 40  -- Leave some margin on both sides
     
     -- Count the number of resources we need to display
-    local resourceCount = 6  -- Money, Wood, Stone, Food, Builders, Villages
+    local resourceCount = 7  -- Money, Wood, Stone, Food, Builders, Villages, Traders
     
     -- Calculate minimum spacing between resources based on screen width
     local minSpacing = 15 * UI.dpiScale  -- Minimum spacing between items
@@ -486,6 +486,16 @@ function UI.draw(game)
     love.graphics.setColor(1, 1, 1)
     local villageValue = #game.villages
     love.graphics.print(villageValue, currentXOffset + labelWidth, yPos)
+    
+    -- Draw trader count
+    love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue for traders
+    local traderLabel = "Traders: "
+    love.graphics.print(traderLabel, currentXOffset, yPos)
+    labelWidth = UI.bigFont:getWidth(traderLabel)
+    love.graphics.setColor(1, 1, 1)
+    local traderValue = #game.traders
+    love.graphics.print(traderValue, currentXOffset + labelWidth, yPos)
+    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(traderValue) + baseSpacing
     
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)
@@ -617,6 +627,22 @@ function drawEntities(game)
             love.graphics.setColor(1, 1, 0, 0.5)
             love.graphics.circle("line", villager.x, villager.y, 6)
         end
+    end
+    
+    -- Draw all traders
+    if game.traders then
+        print("Drawing " .. #game.traders .. " traders in UI.")
+        for _, trader in ipairs(game.traders) do
+            trader:draw()
+            
+            -- Highlight traders of selected village
+            if game.selectedVillage and trader.villageId == game.selectedVillage.id then
+                love.graphics.setColor(1, 1, 0, 0.5)
+                love.graphics.circle("line", trader.x, trader.y, 7)
+            end
+        end
+    else
+        print("No traders array found in UI!")
     end
 end
 

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Market building for spawning traders and conducting trades at.
+- Trader unit for trading between markets to produce money.
 - Generalized Villagers to work at nearest needed station, cart goods back to associated village, and return to work.
 - Made a priority for building queue which is now worked by the villagers.
 - Updated UI to reflect Villagers instead of Builders and Villagers.

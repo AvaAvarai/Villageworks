@@ -32,8 +32,38 @@ function Tooltip.update(game)
                 lines = {
                     "Villagers: " .. Tooltip.UI.hoveredBuilding.currentVillagers .. "/" .. Tooltip.UI.hoveredBuilding.villagerCapacity,
                     "Spawns a new villager every " .. require("config").BUILDING_TYPES.house.spawnTime .. " seconds",
+                    "Belongs to: " .. villageText
+                }
+            }
+        elseif Tooltip.UI.hoveredBuilding.type == "market" then
+            -- Find the village this market belongs to
+            local village = nil
+            for _, v in ipairs(game.villages) do
+                if v.id == Tooltip.UI.hoveredBuilding.villageId then
+                    village = v
+                    break
+                end
+            end
+            
+            local villageText = village and (village.name) or "Unknown village"
+            
+            -- Count other markets in different villages
+            local otherMarkets = 0
+            for _, building in ipairs(game.buildings) do
+                if building.type == "market" and building.villageId ~= Tooltip.UI.hoveredBuilding.villageId then
+                    otherMarkets = otherMarkets + 1
+                end
+            end
+            
+            Tooltip.activeTooltip = {
+                title = "Market",
+                lines = {
+                    "Traders: " .. Tooltip.UI.hoveredBuilding.currentTraders .. "/" .. Tooltip.UI.hoveredBuilding.traderCapacity,
+                    "Spawns a new trader every " .. require("config").BUILDING_TYPES.market.spawnTime .. " seconds",
                     "Belongs to: " .. villageText,
-                    "+2 population capacity"
+                    "Foreign markets available: " .. otherMarkets,
+                    "Traders travel directly to other market buildings",
+                    "More distant markets generate more income"
                 }
             }
         else

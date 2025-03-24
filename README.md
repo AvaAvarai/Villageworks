@@ -86,6 +86,7 @@ The game features a modern, modular code architecture with specialized component
 | Mine       | Extracts stone | Stone |
 | Lumberyard | Harvests wood | Wood |
 | Fishing Hut| Catches fish | Food |
+| Market     | Conducts trader work | Money |
 
 #### Resource System
 

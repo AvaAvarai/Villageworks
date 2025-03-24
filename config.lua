@@ -44,6 +44,14 @@ local Config = {
             resource = "food",
             workCapacity = 2,
             description = "Catches fish for food (must be built directly adjacent to water)"
+        },
+        market = {
+            cost = { wood = 20, stone = 15 },
+            income = 0,
+            buildTime = 3,
+            traderCapacity = 1,  -- Only spawns one trader at a time
+            spawnTime = 15,      -- How often a new trader spawns
+            description = "Spawns traders who travel to other villages' markets to generate income"
         }
     },
     

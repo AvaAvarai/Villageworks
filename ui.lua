@@ -585,6 +585,17 @@ function drawEntities(game)
         road:draw()
     end
     
+    -- Draw all buildings
+    for _, building in ipairs(game.buildings) do
+        building:draw(UI)
+        
+        -- Highlight buildings of selected village
+        if game.selectedVillage and building.villageId == game.selectedVillage.id then
+            love.graphics.setColor(1, 1, 0, 0.2)
+            love.graphics.rectangle("line", building.x - 12, building.y - 12, 24, 24)
+        end
+    end
+
     -- Draw all villages
     for _, village in ipairs(game.villages) do
         village:draw(game)
@@ -594,17 +605,6 @@ function drawEntities(game)
             love.graphics.setColor(1, 1, 0, 0.3)
             love.graphics.circle("line", village.x, village.y, 18)
             love.graphics.circle("line", village.x, village.y, 20)
-        end
-    end
-    
-    -- Draw all buildings
-    for _, building in ipairs(game.buildings) do
-        building:draw(UI)
-        
-        -- Highlight buildings of selected village
-        if game.selectedVillage and building.villageId == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.2)
-            love.graphics.rectangle("line", building.x - 12, building.y - 12, 24, 24)
         end
     end
     

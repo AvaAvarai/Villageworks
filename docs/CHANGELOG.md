@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Draw villages over buildings so their titles aren't obscured by buildings.
 - Save serialization nil checks and safer entity list handeling.
 - Villagers pathing can move over buildings, prioritize building, return to villages.
 

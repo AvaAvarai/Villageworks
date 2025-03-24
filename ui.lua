@@ -1019,6 +1019,26 @@ function UI.wheelmoved(x, y)
         return SaveLoad.wheelmoved(x, y)
     end
     
+    -- Pass wheel events to build menu if active and mouse is hovering over it
+    if UI.showBuildMenu then
+        local menuWidth = 450
+        local menuHeight = 350
+        local menuX = (love.graphics.getWidth() - menuWidth) / 2
+        local menuY = (love.graphics.getHeight() - menuHeight) / 2
+        
+        -- Get current mouse position
+        local mouseX, mouseY = love.mouse.getPosition()
+        
+        -- Check if mouse is within the build menu bounds
+        if mouseX >= menuX and mouseX <= menuX + menuWidth and
+           mouseY >= menuY and mouseY <= menuY + menuHeight then
+            -- Handle build menu scrolling
+            BuildMenu.scrollPosition = BuildMenu.scrollPosition + y * BuildMenu.scrollSpeed
+            BuildMenu.scrollPosition = math.max(0, math.min(BuildMenu.scrollPosition, BuildMenu.maxScroll))
+            return true  -- Return true to prevent camera zoom
+        end
+    end
+    
     -- Pass wheel events to main menu if it's showing and world size selection is active
     if UI.showMainMenu then
         -- Check if MainMenu has wheelmoved handler

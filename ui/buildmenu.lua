@@ -8,6 +8,9 @@ function BuildMenu.init(uiReference)
     UI = uiReference
     BuildMenu.buildingQueues = {} -- Store building queues per village
     BuildMenu.showBuildMenu = false
+    BuildMenu.scrollPosition = 0  -- Track scroll position
+    BuildMenu.maxScroll = 0       -- Maximum scroll position
+    BuildMenu.scrollSpeed = 20    -- How fast to scroll
 end
 
 -- Draw the build menu
@@ -41,78 +44,116 @@ function BuildMenu.drawBuildMenu(game)
         end
     end
     
+    -- Calculate total height needed for all buildings
+    local totalHeight = 0
+    for _ in pairs(Config.BUILDING_TYPES) do
+        totalHeight = totalHeight + 40  -- Each building entry is 40 pixels high
+    end
+    
+    -- Add height for bottom buttons
+    totalHeight = totalHeight + 100  -- Space for bottom buttons
+    
+    -- Calculate maximum scroll position
+    BuildMenu.maxScroll = math.max(0, totalHeight - (menuHeight - 80))  -- 80 pixels for header and bottom margin
+    
+    -- Apply scroll position
+    yOffset = yOffset - BuildMenu.scrollPosition
+    
+    -- Draw building entries
     for buildingType, info in pairs(Config.BUILDING_TYPES) do
-        local canAfford = game.resources.wood >= (info.cost.wood or 0) and 
-                          game.resources.stone >= (info.cost.stone or 0)
-        
-        if canAfford then
-            love.graphics.setColor(1, 1, 1)
-        else
-            love.graphics.setColor(0.6, 0.6, 0.6)
-        end
-        
-        -- Draw building name (at x + 20)
-        love.graphics.print(buildingType:gsub("^%l", string.upper), x + 20, y + yOffset)
-        
-        -- Draw resource costs (at x + 150)
-        love.graphics.print("Wood: " .. (info.cost.wood or 0) .. ", Stone: " .. (info.cost.stone or 0), x + 150, y + yOffset)
-        
-        -- Draw queue controls if a village is selected (moved to x + 320)
-        if game.selectedVillage then
-            local queueCount = BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] or 0
+        -- Skip if this entry would be above or below the visible area
+        if yOffset + 40 > y and yOffset < y + menuHeight then
+            local canAfford = game.resources.wood >= (info.cost.wood or 0) and 
+                            game.resources.stone >= (info.cost.stone or 0)
             
-            -- Draw queue count
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.print("Queue: " .. queueCount, x + 320, y + yOffset)
-            
-            -- Draw + button (moved to x + 400)
-            love.graphics.setColor(0.3, 0.7, 0.3)
-            love.graphics.rectangle("fill", x + 400, y + yOffset - 5, 20, 20, 4, 4)
-            love.graphics.setColor(0, 0, 0)
-            love.graphics.print("+", x + 407, y + yOffset - 3)
-            
-            -- Draw - button (moved to x + 420)
-            if queueCount > 0 then
-                love.graphics.setColor(0.7, 0.3, 0.3)
+            if canAfford then
+                love.graphics.setColor(1, 1, 1)
             else
-                love.graphics.setColor(0.5, 0.5, 0.5)
+                love.graphics.setColor(0.6, 0.6, 0.6)
             end
-            love.graphics.rectangle("fill", x + 420, y + yOffset - 5, 20, 20, 4, 4)
-            love.graphics.setColor(0, 0, 0)
-            love.graphics.print("-", x + 427, y + yOffset - 3)
+            
+            -- Draw building name (at x + 20)
+            love.graphics.print(buildingType:gsub("^%l", string.upper), x + 20, y + yOffset)
+            
+            -- Draw resource costs (at x + 150)
+            love.graphics.print("Wood: " .. (info.cost.wood or 0) .. ", Stone: " .. (info.cost.stone or 0), x + 150, y + yOffset)
+            
+            -- Draw queue controls if a village is selected (moved to x + 320)
+            if game.selectedVillage then
+                local queueCount = BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] or 0
+                
+                -- Draw queue count
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.print("Queue: " .. queueCount, x + 320, y + yOffset)
+                
+                -- Draw + button (moved to x + 400)
+                love.graphics.setColor(0.3, 0.7, 0.3)
+                love.graphics.rectangle("fill", x + 400, y + yOffset - 5, 20, 20, 4, 4)
+                love.graphics.setColor(0, 0, 0)
+                love.graphics.print("+", x + 407, y + yOffset - 3)
+                
+                -- Draw - button (moved to x + 420)
+                if queueCount > 0 then
+                    love.graphics.setColor(0.7, 0.3, 0.3)
+                else
+                    love.graphics.setColor(0.5, 0.5, 0.5)
+                end
+                love.graphics.rectangle("fill", x + 420, y + yOffset - 5, 20, 20, 4, 4)
+                love.graphics.setColor(0, 0, 0)
+                love.graphics.print("-", x + 427, y + yOffset - 3)
+            end
+            
+            -- Add small description of the building
+            love.graphics.setFont(UI.smallFont)
+            love.graphics.setColor(0.8, 0.8, 0.8)
+            love.graphics.print(info.description, x + 20, y + yOffset + 18)
+            love.graphics.setFont(UI.font)
         end
-        
-        -- Add small description of the building
-        love.graphics.setFont(UI.smallFont)
-        love.graphics.setColor(0.8, 0.8, 0.8)
-        love.graphics.print(info.description, x + 20, y + yOffset + 18)
-        love.graphics.setFont(UI.font)
         
         yOffset = yOffset + 40
     end
     
+    -- Draw bottom buttons (always visible at bottom)
+    local bottomY = y + menuHeight - 80
+    
     -- Draw road planning option
     love.graphics.setColor(0.8, 0.8, 0.2)
-    love.graphics.rectangle("fill", x + 20, y + menuHeight - 80, 100, 30, 8, 8)
+    love.graphics.rectangle("fill", x + 20, bottomY, 100, 30, 8, 8)
     love.graphics.setColor(0, 0, 0)
-    love.graphics.print("Plan Road", x + 30, y + menuHeight - 75)
+    love.graphics.print("Plan Road", x + 30, bottomY + 5)
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Roads require builders & resources", x + 125, y + menuHeight - 75)
+    love.graphics.print("Roads require builders & resources", x + 125, bottomY + 5)
     
     -- Draw village building option 
     love.graphics.setColor(0, 0.8, 0)
-    love.graphics.rectangle("fill", x + 20, y + menuHeight - 40, 100, 30, 8, 8)
+    love.graphics.rectangle("fill", x + 20, bottomY + 40, 100, 30, 8, 8)
     love.graphics.setColor(0, 0, 0)
-    love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, x + 30, y + menuHeight - 35)
+    love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, x + 30, bottomY + 45)
     love.graphics.setColor(1, 1, 1, 0.7)
-    love.graphics.print("Cost: $" .. Config.VILLAGE_COST .. ", Wood: 20", x + 125, y + menuHeight - 35)
+    love.graphics.print("Cost: $" .. Config.VILLAGE_COST .. ", Wood: 20", x + 125, bottomY + 45)
     
     -- Draw close button
     love.graphics.setColor(1, 0.3, 0.3)
     love.graphics.rectangle("fill", x + menuWidth - 30, y + 10, 20, 20, 5, 5)
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("X", x + menuWidth - 24, y + 10)
+    
+    -- Draw scrollbar if needed
+    if BuildMenu.maxScroll > 0 then
+        local scrollbarWidth = 10
+        local scrollbarHeight = (menuHeight - 80) * (menuHeight - 80) / totalHeight
+        local scrollbarY = y + 60 + (BuildMenu.scrollPosition / BuildMenu.maxScroll) * (menuHeight - 80 - scrollbarHeight)
+        local scrollbarX = x + menuWidth - scrollbarWidth - 5
+        
+        -- Draw scrollbar background
+        love.graphics.setColor(0.3, 0.3, 0.3, 0.5)
+        love.graphics.rectangle("fill", scrollbarX, y + 60, scrollbarWidth, menuHeight - 80)
+        
+        -- Draw scrollbar handle
+        love.graphics.setColor(0.7, 0.7, 0.7, 0.8)
+        love.graphics.rectangle("fill", scrollbarX, scrollbarY, scrollbarWidth, scrollbarHeight)
+    end
 end
 
 -- Initialize or get the building queue for a village
@@ -279,7 +320,7 @@ function BuildMenu.handleBuildMenuClick(game, x, y)
     
     -- Check if we're clicking on building queue buttons
     if game.selectedVillage then
-        local yOffset = 60
+        local yOffset = 60 - BuildMenu.scrollPosition
         
         -- Initialize building queue for this village if it doesn't exist
         if not BuildMenu.buildingQueues[game.selectedVillage.id] then
@@ -291,22 +332,25 @@ function BuildMenu.handleBuildMenuClick(game, x, y)
         
         -- Check building entries
         for buildingType, info in pairs(Config.BUILDING_TYPES) do
-            -- Check for + button click
-            if x >= menuX + 400 and x <= menuX + 420 and
-               y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 then
-                -- Add to building queue
-                BuildMenu.incrementBuildingQueue(game, buildingType)
-                return true
-            end
-            
-            -- Check for - button click
-            if x >= menuX + 420 and x <= menuX + 440 and
-               y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 and
-               (BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] or 0) > 0 then
-                -- Decrease from building queue
-                BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] = 
-                    BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] - 1
-                return true
+            -- Only check clicks if this entry is visible
+            if yOffset + 40 > menuY and yOffset < menuY + menuHeight - 80 then
+                -- Check for + button click
+                if x >= menuX + 400 and x <= menuX + 420 and
+                   y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 then
+                    -- Add to building queue
+                    BuildMenu.incrementBuildingQueue(game, buildingType)
+                    return true
+                end
+                
+                -- Check for - button click
+                if x >= menuX + 420 and x <= menuX + 440 and
+                   y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 and
+                   (BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] or 0) > 0 then
+                    -- Decrease from building queue
+                    BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] = 
+                        BuildMenu.buildingQueues[game.selectedVillage.id][buildingType] - 1
+                    return true
+                end
             end
             
             yOffset = yOffset + 40
@@ -319,6 +363,20 @@ function BuildMenu.handleBuildMenuClick(game, x, y)
         return true
     end
     
+    return false
+end
+
+-- Handle mouse wheel events for scrolling
+function BuildMenu.wheelmoved(x, y)
+    if BuildMenu.showBuildMenu then
+        -- Update scroll position
+        BuildMenu.scrollPosition = BuildMenu.scrollPosition + y * BuildMenu.scrollSpeed
+        
+        -- Clamp scroll position
+        BuildMenu.scrollPosition = math.max(0, math.min(BuildMenu.scrollPosition, BuildMenu.maxScroll))
+        
+        return true
+    end
     return false
 end
 

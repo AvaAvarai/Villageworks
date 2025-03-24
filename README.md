@@ -6,9 +6,13 @@ Main menu: ![main menu screenshot](data/main_menu.png)
 
 Gameplay: ![gameplay screenshot](docs/screenshot.png)
 
-## Demo Video
+## Demo Videos
 
-Villageworks growth of Carthage Demo: <https://youtu.be/PIl3rFCVl0s> visit here to watch the demo.
+- Villageworks v0.1.4 Game Demo - Building Three Thriving Villages: <https://youtu.be/faGrqHzCRyM>.
+- Villageworks In-Dev Building Farms: <https://youtu.be/haXjfGwkz2E>
+- Villageworks growth of Carthage Demo: <https://youtu.be/PIl3rFCVl0s>
+- Villageworks In-Dev Demo: <https://youtu.be/5IYsQdmNwtY>
+- Villageworks Initial Dev Demo: <https://youtu.be/KV8QX6YbN38>
 
 ## Overview
 

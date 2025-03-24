@@ -12,13 +12,13 @@ Villageworks growth of Carthage Demo: <https://youtu.be/PIl3rFCVl0s> visit here 
 
 ## Overview
 
-Villageworks is a relaxing yet engaging management simulation where you take on the role of a benevolent overseer guiding the development of human civilization. Create multiple villages with historical names, construct buildings, establish resource production chains, and connect your settlements with road networks to build a thriving society.
+Villageworks is a management simulation where you take on the role of a benevolent overseer guiding the development of a human civilization. Create multiple villages bearing historical names, construct buildings strategically, establish resource production chains, and connect your settlements with road networks to build a thriving inter-village trading society.
 
 The game features a modern, modular code architecture with specialized components for UI, entity management, and game state serialization to ensure maintainability and extensibility.
 
 ## Key Features
 
-- **Rich Settlement System**: Create multiple villages, each with a unique historical name
+- **Settlement System**: Create multiple villages, each with a unique historical name
 - **Autonomous AI**: Villagers and builders make intelligent decisions based on current needs and priorities
 - **Resource Economy**: Strategic management of food, wood, stone, and currency
 - **Infrastructure Development**: Plan and build roads to connect villages and enhance resource transport
@@ -31,17 +31,20 @@ The game features a modern, modular code architecture with specialized component
 
 ### Requirements
 
-- [LÖVE](https://love2d.org/) 11.3 or newer
+- [LÖVE](https://love2d.org/) 11.3 or newer: the game engine
+- This project: the game
 
 ### Running the Game
 
 1. Download or clone this repository
-2. Run the game using LÖVE:
+2. Run the game using the LÖVE game engine:
    - **Windows**: Drag the repository folder onto love.exe or use `"C:\path\to\love.exe" "C:\path\to\villageworks"`
    - **macOS**: Use `open -n -a love "path/to/villageworks"` or drag the folder onto the LÖVE application
    - **Linux**: Use `love /path/to/villageworks`
 
 ### Building the Game
+
+Builds the project to a single file that LÖVE can run.
 
 1. Download or clone this repository
 2. Navigate to the folder and run `zip -9 -r ../villageworks.love ./*`.
@@ -122,7 +125,7 @@ Save games are saved by timestamp in the location dependent on your OS, listed i
 
 ### Project Structure
 
-```
+```txt
 villageworks/
 ├── config.lua       # Game constants and settings
 ├── utils.lua        # Utility functions
@@ -160,12 +163,10 @@ villageworks/
 
 ## Future Plans
 
-- Terrain types and effects
 - Seasons and weather
 - Enhanced villager behavior
-- Trade routes and economy
+- Village economy management
 - Research and technology progression
-- Save/load functionality
 - Custom map creation
 - Village specialization
 - Achievements and challenges

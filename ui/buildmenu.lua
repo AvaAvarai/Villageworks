@@ -16,7 +16,7 @@ end
 -- Draw the build menu
 function BuildMenu.drawBuildMenu(game)
     local menuWidth = 450  -- Increased from 300 to 450
-    local menuHeight = 350
+    local menuHeight = 350  -- Fixed height for consistent behavior
     local x = (love.graphics.getWidth() - menuWidth) / 2
     local y = (love.graphics.getHeight() - menuHeight) / 2
     local cornerRadius = 10  -- Radius for rounded corners
@@ -62,7 +62,7 @@ function BuildMenu.drawBuildMenu(game)
     -- Draw building entries
     for buildingType, info in pairs(Config.BUILDING_TYPES) do
         -- Skip if this entry would be above or below the visible area
-        if yOffset + 40 > y and yOffset < y + menuHeight then
+        if yOffset + 40 > 0 and yOffset < menuHeight - 80 then
             local canAfford = game.resources.wood >= (info.cost.wood or 0) and 
                             game.resources.stone >= (info.cost.stone or 0)
             
@@ -333,7 +333,7 @@ function BuildMenu.handleBuildMenuClick(game, x, y)
         -- Check building entries
         for buildingType, info in pairs(Config.BUILDING_TYPES) do
             -- Only check clicks if this entry is visible
-            if yOffset + 40 > menuY and yOffset < menuY + menuHeight - 80 then
+            if yOffset + 40 > 0 and yOffset < menuHeight - 80 then
                 -- Check for + button click
                 if x >= menuX + 400 and x <= menuX + 420 and
                    y >= menuY + yOffset - 5 and y <= menuY + yOffset + 15 then

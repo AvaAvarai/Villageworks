@@ -13,6 +13,7 @@ local UI = {}
 function UI.init()
     UI.font = love.graphics.newFont(14)
     UI.bigFont = love.graphics.newFont(20)
+    UI.mediumFont = love.graphics.newFont(16)
     UI.smallFont = love.graphics.newFont(10)
     UI.titleFont = love.graphics.newFont(48)  -- Larger font for titles
     UI.entityNameFont = love.graphics.newFont(16)  -- New font for entity names with higher DPI
@@ -416,7 +417,7 @@ function UI.draw(game)
     love.graphics.rectangle("fill", 0, hudHeight - 1, love.graphics.getWidth(), 1)
     
     -- Draw resources with improved styling
-    love.graphics.setFont(UI.bigFont)
+    love.graphics.setFont(UI.mediumFont)
     
     -- Calculate available width for resource display
     local screenWidth = love.graphics.getWidth()
@@ -429,60 +430,60 @@ function UI.draw(game)
     local minSpacing = 15 * UI.dpiScale  -- Minimum spacing between items
     local baseSpacing = math.max(minSpacing, (availableWidth / resourceCount) * 0.2)  -- Allocate 20% of item width to spacing
     
-    local yPos = math.floor(hudHeight/2 - UI.bigFont:getHeight()/2)
+    local yPos = math.floor(hudHeight/2 - UI.mediumFont:getHeight()/2)
     local currentXOffset = 20  -- Start with some margin
     
     -- Money display with icon
     love.graphics.setColor(1, 0.9, 0.2)  -- Gold color for money
     local moneyText = "$" .. math.floor(game.money)
     love.graphics.print(moneyText, currentXOffset, yPos)
-    currentXOffset = currentXOffset + UI.bigFont:getWidth(moneyText) + baseSpacing
+    currentXOffset = currentXOffset + UI.mediumFont:getWidth(moneyText) + baseSpacing
     
     -- Wood resource
     love.graphics.setColor(0.8, 0.5, 0.2)  -- Brown for wood
     local woodLabel = "Wood: "
     love.graphics.print(woodLabel, currentXOffset, yPos)
-    local labelWidth = UI.bigFont:getWidth(woodLabel)
+    local labelWidth = UI.mediumFont:getWidth(woodLabel)
     love.graphics.setColor(1, 1, 1)
     local woodValue = math.floor(game.resources.wood)
     love.graphics.print(woodValue, currentXOffset + labelWidth, yPos)
-    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(woodValue) + baseSpacing
+    currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(woodValue) + baseSpacing
     
     -- Stone resource
     love.graphics.setColor(0.6, 0.6, 0.7)  -- Gray for stone
     local stoneLabel = "Stone: "
     love.graphics.print(stoneLabel, currentXOffset, yPos)
-    labelWidth = UI.bigFont:getWidth(stoneLabel)
+    labelWidth = UI.mediumFont:getWidth(stoneLabel)
     love.graphics.setColor(1, 1, 1)
     local stoneValue = math.floor(game.resources.stone)
     love.graphics.print(stoneValue, currentXOffset + labelWidth, yPos)
-    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(stoneValue) + baseSpacing
+    currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(stoneValue) + baseSpacing
     
     -- Food resource
     love.graphics.setColor(0.2, 0.8, 0.3)  -- Green for food
     local foodLabel = "Food: "
     love.graphics.print(foodLabel, currentXOffset, yPos)
-    labelWidth = UI.bigFont:getWidth(foodLabel)
+    labelWidth = UI.mediumFont:getWidth(foodLabel)
     love.graphics.setColor(1, 1, 1)
     local foodValue = math.floor(game.resources.food)
     love.graphics.print(foodValue, currentXOffset + labelWidth, yPos)
-    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(foodValue) + baseSpacing
+    currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(foodValue) + baseSpacing
     
     -- Builder count
     love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue for builders
     local builderLabel = "Villagers: "
     love.graphics.print(builderLabel, currentXOffset, yPos)
-    labelWidth = UI.bigFont:getWidth(builderLabel)
+    labelWidth = UI.mediumFont:getWidth(builderLabel)
     love.graphics.setColor(1, 1, 1)
     local builderValue = #game.villagers
     love.graphics.print(builderValue, currentXOffset + labelWidth, yPos)
-    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(builderValue) + baseSpacing
+    currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(builderValue) + baseSpacing
     
     -- Village count
     love.graphics.setColor(0.9, 0.3, 0.6)  -- Purple for villages
     local villageLabel = "Villages: "
     love.graphics.print(villageLabel, currentXOffset, yPos)
-    labelWidth = UI.bigFont:getWidth(villageLabel)
+    labelWidth = UI.mediumFont:getWidth(villageLabel)
     love.graphics.setColor(1, 1, 1)
     local villageValue = #game.villages
     love.graphics.print(villageValue, currentXOffset + labelWidth, yPos)
@@ -490,12 +491,13 @@ function UI.draw(game)
     -- Draw trader count
     love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue for traders
     local traderLabel = "Traders: "
+    currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(villageValue) + baseSpacing
     love.graphics.print(traderLabel, currentXOffset, yPos)
-    labelWidth = UI.bigFont:getWidth(traderLabel)
+    labelWidth = UI.mediumFont:getWidth(traderLabel)
     love.graphics.setColor(1, 1, 1)
     local traderValue = #game.traders
     love.graphics.print(traderValue, currentXOffset + labelWidth, yPos)
-    currentXOffset = currentXOffset + labelWidth + UI.bigFont:getWidth(traderValue) + baseSpacing
+    currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(traderValue) + baseSpacing
     
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)

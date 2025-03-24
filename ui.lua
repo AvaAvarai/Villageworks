@@ -435,7 +435,7 @@ function UI.draw(game)
     
     -- Money display with icon
     love.graphics.setColor(1, 0.9, 0.2)  -- Gold color for money
-    local moneyText = "$" .. math.floor(game.money)
+    local moneyText = "Money: $" .. math.floor(game.money)
     love.graphics.print(moneyText, currentXOffset, yPos)
     currentXOffset = currentXOffset + UI.mediumFont:getWidth(moneyText) + baseSpacing
     

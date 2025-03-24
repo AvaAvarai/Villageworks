@@ -246,6 +246,15 @@ function Village:draw(game)
     -- Use the entity name font for the village name
     local currentFont = love.graphics.getFont()
     love.graphics.setFont(UI.entityNameFont)
+    
+    -- Draw black background rectangle behind the name
+    local nameWidth = UI.entityNameFont:getWidth(self.name)
+    local nameHeight = UI.entityNameFont:getHeight()
+    love.graphics.setColor(0, 0, 0, 1.0)
+    love.graphics.rectangle("fill", self.x - 20, self.y - 30, nameWidth, nameHeight)
+    
+    -- Draw the name in white
+    love.graphics.setColor(1, 1, 1)
     love.graphics.print(self.name, self.x - 20, self.y - 30)
     love.graphics.setFont(currentFont)
 end

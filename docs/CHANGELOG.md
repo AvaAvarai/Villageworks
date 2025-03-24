@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Black background rectangle behind the village names
 - Scrollpane embedded in build menu to scroll building list.
 - Update screenshots.
 - Main menu title backdrop.

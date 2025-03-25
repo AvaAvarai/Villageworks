@@ -4,3 +4,4 @@
 - Build menu items overlap build road, build village, and the title.
 - Road drawing overlay is offset with the window size.
 - Villages need no tile backdrop so roads show behind.
+- Village tile needs a more high-res version.

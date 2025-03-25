@@ -8,7 +8,7 @@ local Version = {
 
 -- Get a formatted version string
 function Version.getVersionString()
-    return string.format("v%d.%d.%d", Version.major, Version.minor, Version.patch)
+    return string.format("current version: v%d.%d.%d", Version.major, Version.minor, Version.patch)
 end
 
 -- Get a full version string with date

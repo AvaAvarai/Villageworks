@@ -70,9 +70,8 @@ function BuildMenu.drawBuildMenu(game)
     -- Draw building entries
     for buildingType, info in pairs(Config.BUILDING_TYPES) do
         -- Skip if this entry would be above or below the visible area
-        if yOffset + 40 > 0 and yOffset < menuHeight - 80 then
-            local canAfford = game.resources.wood >= (info.cost.wood or 0) and 
-                            game.resources.stone >= (info.cost.stone or 0)
+        if yOffset - 30 > 0 and yOffset + 100 < menuHeight then
+            local canAfford = game.resources.wood >= (info.cost.wood or 0) and game.resources.stone >= (info.cost.stone or 0)
             
             if canAfford then
                 love.graphics.setColor(1, 1, 1)

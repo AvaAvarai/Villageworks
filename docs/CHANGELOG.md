@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Build menu horizontal draw limits.
 - Draw villages on top of road tiles.
 - Lower backdrop opacity for hover texts from 1.0 to 0.25.
 - Draw buidling hover or 'i' key text over units and tiles.

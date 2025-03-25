@@ -80,7 +80,7 @@ function game:getVillageName(villageId)
 end
 
 function love.load()
-    love.graphics.setBackgroundColor(0.2, 0.6, 0.1) -- Green grass background
+    love.graphics.setBackgroundColor(0.1, 0.1, 0.1)
     
     -- Load version information
     local Version = require("version")

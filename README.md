@@ -60,8 +60,8 @@ Builds the project to a single file that LÖVE can run.
 
 1. From the main menu, select "New Game" to begin
 2. Click anywhere on the map to place your first village (costs $50 and 20 wood)
-3. Villages automatically spawn builders who will construct buildings
-4. Builders prioritize houses to maintain population growth
+3. Villages automatically spawn initial two villagers who will construct buildings
+4. Villagers prioritize houses to maintain population growth
 5. Use the build menu to construct resource production buildings and plan roads
 
 ### Controls
@@ -97,17 +97,16 @@ Builds the project to a single file that LÖVE can run.
 
 #### Resource System
 
-- **Food**: Required to spawn builders and maintain population
+- **Food**: Required to spawn villagers and maintain population
 - **Wood**: Used for construction of all buildings
 - **Stone**: Used for construction of more advanced buildings
 - **Money**: Earned from resource production and trade
 
 #### Roads
 
-- Roads connect villages to each other and to resource buildings
-- Villagers and builders move faster on roads
-- Roads improve resource transport efficiency
-- Roads must be planned and built by builders
+- Villagers and traders move faster on roads.
+- Roads improve resource transport efficiency.
+- Roads must be planned and built by villagers.
 
 #### Saving and Loading
 

@@ -229,6 +229,15 @@ function Villager.update(villagers, game, dt)
             -- Build the structure
             villager.buildProgress = villager.buildProgress + dt
             
+            -- Check if buildTask exists before accessing it
+            if not villager.buildTask then
+                -- Something went wrong, the building task got lost
+                print("Warning: Villager in building state with no buildTask")
+                villager.state = "seeking_work"
+                villager.buildProgress = 0
+                return
+            end
+            
             if villager.buildTask.type == "build_road" then
                 -- Building a road
                 if villager.buildProgress >= villager.buildTask.totalWorkNeeded then

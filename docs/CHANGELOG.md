@@ -10,12 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Traders use A* and wont walk over mountains or water.
+- Traders will look for new markets.
 - Renamed 'Lumberyard' into 'Sawmill'.
 - Renamed 'Fishing Hut' into 'Fishery'.
 
 ### Fixed
 
-- future
+- Trader reload.
 
 ## [0.1.4] - 2025-03-24
 

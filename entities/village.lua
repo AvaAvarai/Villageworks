@@ -271,16 +271,14 @@ function Village:draw(game)
     love.graphics.setFont(UI.entityNameFont)
     
     -- Draw black background rectangle behind the name
-    local tierName = Village.TIER_NAMES[self.tier]
-    local displayName = self.name .. " (" .. tierName .. ")"
+    local displayName = self.name
     local nameWidth = UI.entityNameFont:getWidth(displayName)
-    local nameHeight = UI.entityNameFont:getHeight()
     love.graphics.setColor(0, 0, 0, 0.25)
-    love.graphics.rectangle("fill", self.x - 20, self.y - 30, nameWidth, nameHeight)
+    love.graphics.rectangle("fill", self.x - nameWidth / 2, self.y - 50, nameWidth, 20)
     
     -- Draw the name in white
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(displayName, self.x - 20, self.y - 30)
+    love.graphics.print(displayName, self.x - nameWidth / 2, self.y - 50)
     love.graphics.setFont(currentFont)
 end
 

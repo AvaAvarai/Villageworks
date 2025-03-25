@@ -236,7 +236,10 @@ function Building:draw(UI)
     
     -- Draw building
     love.graphics.rectangle("fill", self.x - 10, self.y - 10, 20, 20)
-    
+end
+
+-- Draw text labels separately so they appear on top of all other elements
+function Building:drawText(UI)
     -- Check if we should show information
     local showInfo = UI.infoKeyDown or (UI.hoveredBuilding and UI.hoveredBuilding.id == self.id)
     
@@ -260,12 +263,29 @@ function Building:draw(UI)
         elseif self.type == "market" then
             name = "Market"
         end
+        
+        -- Draw black background behind text for better visibility
+        local nameWidth = UI.entityNameFont:getWidth(name)
+        local nameHeight = UI.entityNameFont:getHeight()
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", self.x - 10, self.y - 30, nameWidth, nameHeight)
+        
+        -- Draw text
+        love.graphics.setColor(1, 1, 1)
         love.graphics.print(name, self.x - 10, self.y - 30)
         love.graphics.setFont(currentFont)
         
         -- Display workers or villagers or traders
         if self.type == "house" then
-            love.graphics.print(self.currentVillagers .. "/" .. self.villagerCapacity, self.x - 10, self.y + 15)
+            -- Draw black background behind text
+            local countText = self.currentVillagers .. "/" .. self.villagerCapacity
+            local countWidth = love.graphics.getFont():getWidth(countText)
+            love.graphics.setColor(0, 0, 0, 0.7)
+            love.graphics.rectangle("fill", self.x - 10, self.y + 15, countWidth, 15)
+            
+            -- Draw count text
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.print(countText, self.x - 10, self.y + 15)
             
             -- If villager is being produced, show timer
             if self.currentVillagers < self.villagerCapacity then
@@ -274,7 +294,15 @@ function Building:draw(UI)
                 love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
             end
         elseif self.type == "market" then
-            love.graphics.print(self.currentTraders .. "/" .. self.traderCapacity, self.x - 10, self.y + 15)
+            -- Draw black background behind text
+            local countText = self.currentTraders .. "/" .. self.traderCapacity
+            local countWidth = love.graphics.getFont():getWidth(countText)
+            love.graphics.setColor(0, 0, 0, 0.7)
+            love.graphics.rectangle("fill", self.x - 10, self.y + 15, countWidth, 15)
+            
+            -- Draw count text
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.print(countText, self.x - 10, self.y + 15)
             
             -- If trader is being produced, show timer
             if self.currentTraders < self.traderCapacity then
@@ -283,7 +311,15 @@ function Building:draw(UI)
                 love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
             end
         else
-            love.graphics.print(#self.workers .. "/" .. self.workersNeeded, self.x - 10, self.y + 15)
+            -- Draw black background behind text
+            local countText = #self.workers .. "/" .. self.workersNeeded
+            local countWidth = love.graphics.getFont():getWidth(countText)
+            love.graphics.setColor(0, 0, 0, 0.7)
+            love.graphics.rectangle("fill", self.x - 10, self.y + 15, countWidth, 15)
+            
+            -- Draw count text
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.print(countText, self.x - 10, self.y + 15)
         end
     end
 end

@@ -599,7 +599,7 @@ function drawEntities(game)
         road:draw()
     end
     
-    -- Draw all buildings
+    -- Draw all buildings (just the sprites, not text)
     for _, building in ipairs(game.buildings) do
         building:draw(UI)
         
@@ -640,6 +640,11 @@ function drawEntities(game)
         end
     else
         print("No traders array found in UI!")
+    end
+    
+    -- Draw all building text AFTER all other entities to ensure it appears on top
+    for _, building in ipairs(game.buildings) do
+        building:drawText(UI)
     end
 end
 

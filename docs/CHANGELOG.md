@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Draw buidling hover or 'i' key text over units and tiles.
 - Trader refresh market query.
 
 ## [0.1.4] - 2025-03-24

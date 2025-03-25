@@ -410,6 +410,14 @@ function Villager:getMovementSpeed(game)
         -- Increase road speed multiplier for faster movement
         return baseSpeed * Config.ROAD_SPEED_MULTIPLIER
     else
+        -- Try to find a road to use
+        local nearestRoad, distance = require("entities/road").findNearestRoad(game.roads, self.x, self.y, 100)
+        if nearestRoad then
+            -- If we found a road nearby, make it our target
+            self.targetX = nearestRoad.startX
+            self.targetY = nearestRoad.startY
+            self.path = nil -- Force path recalculation
+        end
         return baseSpeed
     end
 end
@@ -490,10 +498,16 @@ function Villager:moveAlongPath(game, dt)
     return false -- Not arrived at final destination yet
 end
 
-function Villager:draw()
+function Villager:draw(game)
     -- Always draw the base villager circle first with consistent size
     love.graphics.setColor(0.2, 0.6, 0.9)
     love.graphics.circle("fill", self.x, self.y, 4)
+    
+    -- Add road indicator if on a road
+    if self:isOnRoad(game) then
+        love.graphics.setColor(0.8, 0.8, 0.8, 0.5) -- Light gray glow
+        love.graphics.circle("fill", self.x, self.y, 6)
+    end
     
     -- Add specific visual elements based on state
     if self.state == "transporting" and self.carriedResource then

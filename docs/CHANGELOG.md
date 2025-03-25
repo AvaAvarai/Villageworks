@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Speeded up road movement.
+- Villagers use roads more.
 - 'i' key is a toggle.
 - Don't stop main menu music during gameplay.
 - Traders farther markets get higher scores.

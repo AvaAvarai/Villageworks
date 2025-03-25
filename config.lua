@@ -77,7 +77,7 @@ local Config = {
     -- Road settings
     ROAD_COST_PER_UNIT = { wood = 0.05, stone = 0.02 },
     ROAD_BUILD_SPEED = 50,          -- How fast builders construct roads (units per second)
-    ROAD_SPEED_MULTIPLIER = 3,    -- Movement speed multiplier when on roads
+    ROAD_SPEED_MULTIPLIER = 5,    -- Movement speed multiplier when on roads (increased from 3)
     ROAD_BUILD_PRIORITY = 0.3,      -- Chance a builder will prioritize road building
     
     -- Forest settings

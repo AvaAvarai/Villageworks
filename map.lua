@@ -458,7 +458,7 @@ function Map:isPositionClearOfBuildings(worldX, worldY, game)
 end
 
 -- Find a path between two points that avoids water tiles (A* algorithm)
-function Map:findPathAvoidingWater(startX, startY, endX, endY)
+function Map:findPathAvoidingWater(startX, startY, endX, endY, ignoreBuildings, preferRoads)
     -- Convert world coordinates to tile coordinates
     local tileStartX, tileStartY = Map:worldToTile(startX, startY)
     local tileEndX, tileEndY = Map:worldToTile(endX, endY)
@@ -590,7 +590,12 @@ function Map:findPathAvoidingWater(startX, startY, endX, endY)
                     moveCost = moveCost * 1.5 -- Forest is harder to traverse
                 -- Road tiles are cheaper to traverse
                 elseif tileType == Map.TILE_ROAD then
-                    moveCost = moveCost * 0.7 -- Prefer following roads
+                    if preferRoads then
+                        -- Strongly prefer roads when parameter is set
+                        moveCost = moveCost * 0.3 -- Much stronger road preference for traders
+                    else
+                        moveCost = moveCost * 0.7 -- Default road preference
+                    end
                 end
                 
                 local tentativeG = current.g + moveCost

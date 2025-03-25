@@ -177,8 +177,6 @@ function Trader:findForeignMarket(game)
             
             -- Calculate final score - higher is better
             local score = distanceScore
-            -- No bonus for connected markets, roads just make travel faster
-            -- Don't influence market selection based on roads
             
             -- Slightly penalize extremely far unconnected markets
             if distance > maxDistance and not isConnected then
@@ -294,7 +292,7 @@ function Trader:moveTowardsTarget(game, dt)
             return
         end
         
-        local tilePath = game.map:findPathAvoidingWater(self.x, self.y, self.targetX, self.targetY)
+        local tilePath = game.map:findPathAvoidingWater(self.x, self.y, self.targetX, self.targetY, true, true)
         if tilePath then
             self.currentPath = game.map:pathToWorldCoordinates(tilePath)
             self.pathTargetX = self.targetX

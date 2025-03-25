@@ -76,6 +76,21 @@ function MainMenu.init(UI)
         MainMenu.hoverSoundEnabled = false
     end
     
+    -- Load button click sound with error handling
+    success, result = pcall(function()
+        local clickSound = love.audio.newSource("data/vgmenuselect.wav", "static")
+        clickSound:setVolume(0.8)  -- Slightly louder than hover sound
+        return clickSound
+    end)
+    
+    if success then
+        MainMenu.clickSound = result
+        MainMenu.clickSoundEnabled = true
+    else
+        print("Warning: Could not load menu click sound. Click sound disabled.")
+        MainMenu.clickSoundEnabled = false
+    end
+    
     -- Initialize background music
     MainMenu.backgroundMusic = love.audio.newSource("data/main_menu.mp3", "stream")
     MainMenu.backgroundMusic:setLooping(true)
@@ -615,6 +630,12 @@ end
 
 -- Handle main menu clicks
 function MainMenu.handleClick(game, x, y, Documentation, SaveLoad)
+    -- Play click sound if enabled
+    if MainMenu.clickSoundEnabled then
+        MainMenu.clickSound:stop()  -- Stop any currently playing sound
+        MainMenu.clickSound:play()
+    end
+    
     -- Disable hover sounds when any button is clicked
     MainMenu.buttonClicked = true
     
@@ -711,6 +732,12 @@ function MainMenu.handleWorldSizeClick(game, x, y)
     -- Check for close button click
     if x >= menuX + menuWidth - 30 and x <= menuX + menuWidth - 10 and
        y >= menuY + 10 and y <= menuY + 30 then
+        -- Play click sound if enabled
+        if MainMenu.clickSoundEnabled then
+            MainMenu.clickSound:stop()
+            MainMenu.clickSound:play()
+        end
+        
         MainMenu.showWorldSizeMenu = false
         MainMenu.reset_hover_sound()  -- Reset hover sound when closing menu
         return true
@@ -764,6 +791,12 @@ function MainMenu.handleWorldSizeClick(game, x, y)
     local startButtonY = menuY + menuHeight - 50
     if x >= menuX + 150 and x <= menuX + menuWidth - 150 and
        y >= startButtonY and y <= startButtonY + 40 then
+        -- Play click sound if enabled
+        if MainMenu.clickSoundEnabled then
+            MainMenu.clickSound:stop()
+            MainMenu.clickSound:play()
+        end
+        
         -- Start the game with selected world size
         MainMenu.startGameWithSelectedSize(game)
         return true

@@ -333,8 +333,10 @@ function UI.draw(game)
     -- Draw the map tiles first
     game.map:draw(game.camera)
     
-    -- No need to draw the grid anymore as we have tiles
-    -- drawGrid(game)
+    -- Draw roads first (so they appear behind everything else)
+    for _, road in ipairs(game.roads) do
+        road:draw()
+    end
     
     -- Draw entities in proper order
     drawEntities(game)
@@ -594,11 +596,6 @@ end
 
 -- Draw all entities
 function drawEntities(game)
-    -- Draw roads first (so they appear behind everything else)
-    for _, road in ipairs(game.roads) do
-        road:draw()
-    end
-    
     -- Draw all buildings (just the sprites, not text)
     for _, building in ipairs(game.buildings) do
         building:draw(UI)

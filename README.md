@@ -186,11 +186,12 @@ This project is licensed under the MIT License, see the [LICENSE](./LICENSE) fil
 
 - Using the [LÖVE](https://love2d.org/) game engine available under the zlib/libpng license.
 - Using the [Serpent](https://github.com/pkulchenko/serpent) Lua serializer available under the MIT License.
-- Tilesets and artwork used which are available for public usage under public domain:
-  - [Simple Tiles](https://opengameart.org/content/simple-tiles)
-  - [32x32_Tree](https://opengameart.org/content/32x32tree)
-  - [City In A Canyon](https://opengameart.org/content/city-in-a-canyon)
-  - [Tiny Basic 16 Tiles](https://opengameart.org/content/tiny-16-basic)
+- Tilesets, music, and artwork used which are available for public usage under public domain Creative Commons licenses:
+  - Grass, water, road tiles [Simple Tiles](https://opengameart.org/content/simple-tiles)
+  - Tree tile [32x32_Tree](https://opengameart.org/content/32x32tree)
+  - Main menu background art [City In A Canyon](https://opengameart.org/content/city-in-a-canyon)
+  - Mountain tile [Tiny Basic 16 Tiles](https://opengameart.org/content/tiny-16-basic)
+  - Main menu music [Hero Immortal](https://opengameart.org/content/hero-immortal)
 
 ---
 

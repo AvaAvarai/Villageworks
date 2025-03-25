@@ -58,6 +58,12 @@ function MainMenu.init(UI)
     
     -- Create ordered list of world sizes for easier iteration
     MainMenu.worldSizeOrder = {"small", "medium", "large", "huge"}
+
+    -- Initialize background music
+    MainMenu.backgroundMusic = love.audio.newSource("data/main_menu.mp3", "stream")
+    MainMenu.backgroundMusic:setLooping(true)
+    MainMenu.backgroundMusic:setVolume(0.5)  -- Set volume to 50%
+    MainMenu.backgroundMusic:play()
 end
 
 -- Draw the main menu
@@ -739,6 +745,11 @@ function MainMenu.startGameWithSelectedSize(game)
     local Config = require("config")
     Config.WORLD_WIDTH = worldSize.width
     Config.WORLD_HEIGHT = worldSize.height
+    
+    -- Stop the background music
+    if MainMenu.backgroundMusic then
+        MainMenu.backgroundMusic:stop()
+    end
     
     -- Hide menus and start the game
     MainMenu.showWorldSizeMenu = false

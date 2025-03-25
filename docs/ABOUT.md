@@ -2,7 +2,7 @@
 
 ## Version Information
 
-Current version: 0.1.4 (Released March 24, 2025)
+Current version: 0.1.5 (Released March 25, 2025)
 
 This is an alpha release with core gameplay mechanics implemented. See the changelog for details on recent updates.
 

@@ -1,6 +1,6 @@
 # Villageworks
 
-Villageworks is an in-development open source civilization management game where you create and manage a network of thriving settlements, written in Lua using the LÖVE game engine. Current version: 0.1.4.
+Villageworks is an in-development open source civilization management game where you create and manage a network of thriving settlements, written in Lua using the LÖVE game engine. Current version: 0.1.5.
 
 ## Screenshots
 

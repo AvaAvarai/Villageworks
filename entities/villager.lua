@@ -375,6 +375,31 @@ end
 
 -- Find work in any connected village
 function Villager:findWork(game)
+    -- CRITICAL FIX: First check if we're stuck on a village tile and force movement
+    local currentTileType = game.map:getTileTypeAtWorld(self.x, self.y)
+    if currentTileType == game.map.TILE_VILLAGE then
+        -- If stuck on village tile, try to move slightly away first
+        for _, village in ipairs(game.villages) do
+            if Utils.distance(self.x, self.y, village.x, village.y) < 5 then
+                -- Move in a random direction away from village center
+                local angle = math.random() * 2 * math.pi
+                self.targetX = self.x + math.cos(angle) * 15
+                self.targetY = self.y + math.sin(angle) * 15
+                
+                -- Make sure we're within map bounds
+                local mapWidth = game.map.width * game.map.tileSize
+                local mapHeight = game.map.height * game.map.tileSize
+                self.targetX = math.max(0, math.min(self.targetX, mapWidth))
+                self.targetY = math.max(0, math.min(self.targetY, mapHeight))
+                
+                self.state = "going_to_work"
+                self.path = nil
+                print("Moving villager off village tile")
+                return true
+            end
+        end
+    end
+    
     -- First try to find a building task, which has highest priority
     if self:findBuildTask(game) then
         return true
@@ -428,12 +453,52 @@ function Villager:calculatePath(game, destX, destY)
         destY = math.max(0, math.min(destY, mapHeight))
     end
     
+    -- CRITICAL FIX: If villager is on a village tile and can't move, force an initial position offset
+    if not self.path or #self.path == 0 then
+        local currentTileType = game.map:getTileTypeAtWorld(self.x, self.y)
+        if currentTileType == game.map.TILE_VILLAGE then
+            -- Check if we're very close to a village position
+            local onVillageTile = false
+            for _, village in ipairs(game.villages) do
+                if Utils.distance(self.x, self.y, village.x, village.y) < 5 then
+                    onVillageTile = true
+                    
+                    -- Force position offset to get unstuck (move slightly away from village center)
+                    self.x = self.x + math.random(-10, 10)
+                    self.y = self.y + math.random(-10, 10)
+                    
+                    -- Make sure we're within map bounds after offset
+                    local mapWidth = game.map.width * game.map.tileSize
+                    local mapHeight = game.map.height * game.map.tileSize
+                    self.x = math.max(0, math.min(self.x, mapWidth))
+                    self.y = math.max(0, math.min(self.y, mapHeight))
+                    
+                    print("Unstuck villager from village tile with ID: " .. village.id)
+                    break
+                end
+            end
+        end
+    end
+    
     -- Use the map's pathfinding function to find a path that avoids water and mountains
     -- Allow walking over buildings by not checking building collisions
-    local path = game.map:findPathAvoidingWater(self.x, self.y, destX, destY, true) -- Added parameter to ignore buildings
+    -- CRITICAL FIX: Add parameter to make village tiles passable
+    local path = game.map:findPathAvoidingWater(self.x, self.y, destX, destY, true, true) -- Added parameter to ignore buildings and treat village tiles as passable
     
     if not path or #path == 0 then
-        -- Could not find a path, return to idle state
+        -- Could not find a path, try a more direct approach for short distances
+        if Utils.distance(self.x, self.y, destX, destY) < 50 then
+            -- For short distances, create a simple direct path
+            local directPath = {
+                {x = math.floor(self.x / game.map.tileSize) + 1, y = math.floor(self.y / game.map.tileSize) + 1},
+                {x = math.floor(destX / game.map.tileSize) + 1, y = math.floor(destY / game.map.tileSize) + 1}
+            }
+            self.path = game.map:pathToWorldCoordinates(directPath)
+            self.currentPathIndex = 1
+            return self.path ~= nil
+        end
+        
+        -- Still couldn't find a path, return to idle state
         self.path = nil
         return false
     end

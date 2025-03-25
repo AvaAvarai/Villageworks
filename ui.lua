@@ -209,12 +209,19 @@ function UI.handleClick(game, x, y)
     
     -- Check if clicking on a village (when not in build menu already)
     if not UI.showBuildMenu and UI.hoveredVillage then
+        -- Save current camera position to prevent repositioning
+        local oldCameraX, oldCameraY = game.camera.x, game.camera.y
+        
         -- Select this village
         game.selectedVillage = UI.hoveredVillage
         
         -- Open build menu for this village
         UI.showBuildMenu = true
         BuildMenu.showBuildMenu = true
+        
+        -- Restore camera position to prevent repositioning
+        game.camera.x, game.camera.y = oldCameraX, oldCameraY
+        
         return true
     end
     

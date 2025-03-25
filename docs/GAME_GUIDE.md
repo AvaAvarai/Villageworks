@@ -26,7 +26,7 @@ Villages are the core of your civilization. Each new village will automatically 
 ### Early Priorities
 
 1. **Houses**: Builders prioritize houses, which are essential for population growth
-2. **Resource Buildings**: Farm/Fishing Hut (food), Lumberyard (wood), Mine (stone)
+2. **Resource Buildings**: Farm/Fishery (food), Sawmill (wood), Mine (stone)
 3. **Roads**: Connect your resource buildings to villages for efficiency
 
 ## Resource Management
@@ -43,8 +43,8 @@ Villages are the core of your civilization. Each new village will automatically 
 | Building    | Resources Required      | Production           | Notes                          |
 |-------------|-------------------------|----------------------|--------------------------------|
 | Farm        | 15 wood, 10 stone       | Food                 | Requires workers               |
-| Fishing Hut | 25 wood, 5 stone        | Food                 | Higher production than farms   |
-| Lumberyard  | 10 wood, 10 stone       | Wood                 | Essential for expansion        |
+| Fishery | 25 wood, 5 stone        | Food                 | Higher production than farms   |
+| Sawmill  | 10 wood, 10 stone       | Wood                 | Essential for expansion        |
 | Mine        | 10 wood, 25 stone       | Stone                | Higher stone cost, good output |
 | House       | 15 wood, 5 stone        | Villagers, capacity  | Provides +3 population capacity|
 

@@ -10,7 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-- future
+- Renamed 'Lumberyard' into 'Sawmill'.
+- Renamed 'Fishing Hut' into 'Fishery'.
 
 ### Fixed
 
@@ -97,7 +98,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - Added the serpent library for Lua serialization, enabling save/load functionality
-- Enhanced fishing huts with water adjacency requirement for more realistic gameplay
+- Enhanced Fisherys with water adjacency requirement for more realistic gameplay
 - Added resource refunding when buildings cannot be constructed
 - Added building overlap prevention for more realistic placement
 - Added visual building radius overlay when hovering over villages
@@ -108,7 +109,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - Updated camera system to start at the center of the world on map initialization
-- Made fishing huts require adjacency to water tiles for placement
+- Made Fisherys require adjacency to water tiles for placement
 - Improved building placement logic with smarter positioning algorithms
 - Enhanced builder AI with improved positioning logic to prevent building overlaps
 - Added MAX_BUILD_DISTANCE configuration parameter to control building placement limits
@@ -119,7 +120,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Fixed save/load system to properly serialize and deserialize map data
 - Implemented proper map state persistence during game loads
-- Fixed fishing hut placement to ensure they're built only next to water tiles
+- Fixed Fishery placement to ensure they're built only next to water tiles
 - Fixed building placement to prevent buildings from overlapping with each other
 - Fixed "Maximum stack depth reached" error by ensuring camera transformations are properly balanced
 - Fixed build menu not appearing when toggled or when clicking on villages

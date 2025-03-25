@@ -28,7 +28,7 @@ function Villager.new(x, y, villageId, homeBuilding)
         currentPathIndex = 1, -- Current position in the path
         needsPathRecalculation = false, -- Flag to recalculate path
         
-        -- Lumberyard specific properties
+        -- Sawmill specific properties
         forestTargetX = nil,
         forestTargetY = nil,
         
@@ -157,9 +157,9 @@ function Villager.update(villagers, game, dt)
                         villager.path = nil -- Force recalculation of path
                         
                         -- Use a more reliable path calculation for distant buildings
-                        -- Allow longer calculation time for distant buildings like fishing huts
+                        -- Allow longer calculation time for distant buildings like Fisherys
                         if Utils.distance(villager.x, villager.y, villager.targetX, villager.targetY) > Config.MAX_BUILD_DISTANCE then
-                            -- For buildings outside normal range (like fishing huts at water's edge)
+                            -- For buildings outside normal range (like Fisherys at water's edge)
                             -- Always use full map pathfinding to ensure a valid return path
                             local path = game.map:findPathAvoidingWater(villager.x, villager.y, villager.targetX, villager.targetY, true)
                             if path and #path > 0 then
@@ -533,14 +533,14 @@ function Villager:draw()
         love.graphics.circle("fill", self.x, self.y - 6, 2)
     end
     
-    -- Show special indicator for lumberyard workers
-    if self.workplace and self.workplace.type == "lumberyard" then
+    -- Show special indicator for Sawmill workers
+    if self.workplace and self.workplace.type == "Sawmill" then
         love.graphics.setColor(0.5, 0.3, 0.1)
         love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
     end
     
     -- Show special indicator for fishers
-    if self.targetBuilding and self.targetBuilding.type == "fishing_hut" then
+    if self.targetBuilding and self.targetBuilding.type == "Fishery" then
         love.graphics.setColor(0.2, 0.4, 0.8)
         love.graphics.rectangle("fill", self.x - 2, self.y - 8, 4, 2)
     end
@@ -801,13 +801,13 @@ function Villager:findBuildingLocation(game, buildingType, targetVillage)
                                 game.map:canBuildAt(buildX, buildY) and
                                 game.map:isPositionClearOfBuildings(buildX, buildY, game)
         
-        -- Special case for fishing huts: must be adjacent to water
-        if buildingType == "fishing_hut" then
+        -- Special case for Fisherys: must be adjacent to water
+        if buildingType == "Fishery" then
             foundPosition = isValidPosition and game.map:isAdjacentToWater(buildX, buildY)
         elseif buildingType == "mine" then
             foundPosition = isValidPosition and game.map:isAdjacentToMountain(buildX, buildY)
-        elseif buildingType == "lumberyard" then
-            -- Lumberyards should be near forest
+        elseif buildingType == "Sawmill" then
+            -- Sawmills should be near forest
             foundPosition = isValidPosition and self:hasNearbyForests(game, buildX, buildY, 100)
         else
             foundPosition = isValidPosition
@@ -818,14 +818,14 @@ function Villager:findBuildingLocation(game, buildingType, targetVillage)
     
     -- If we couldn't find a good spot, try more specialized search methods
     if not foundPosition then
-        if buildingType == "fishing_hut" then
-            -- For fishing huts, try to find a spot near water
+        if buildingType == "Fishery" then
+            -- For Fisherys, try to find a spot near water
             buildX, buildY = self:findNonOverlappingWaterEdge(game, village.x, village.y)
         elseif buildingType == "mine" then 
             -- For mines, find position next to mountain
             buildX, buildY = self:findNonOverlappingMountainEdge(game, village.x, village.y)
-        elseif buildingType == "lumberyard" then
-            -- For lumberyards, find position near forest
+        elseif buildingType == "Sawmill" then
+            -- For Sawmills, find position near forest
             buildX, buildY = self:findNonOverlappingForestPosition(game, village.x, village.y)
         else
             -- For other buildings, try a more systematic search
@@ -862,7 +862,7 @@ function Villager:hasNearbyForests(game, x, y, radius)
     return forestCount >= 5 -- Need at least 5 forest tiles nearby
 end
 
--- Helper method to find a non-overlapping position near water for fishing huts
+-- Helper method to find a non-overlapping position near water for Fisherys
 function Villager:findNonOverlappingWaterEdge(game, startX, startY)
     local maxSearchRadius = 300
     local searchStep = 15
@@ -876,7 +876,7 @@ function Villager:findNonOverlappingWaterEdge(game, startX, startY)
             local x = startX + math.cos(angle) * radius
             local y = startY + math.sin(angle) * radius
             
-            -- Check if the location is suitable for a fishing hut
+            -- Check if the location is suitable for a Fishery
             local canBuildHere = game.map:isWithinBounds(x, y) and 
                                  game.map:canBuildAt(x, y) and
                                  game.map:isAdjacentToWater(x, y) and
@@ -986,7 +986,7 @@ function Villager:findNonOverlappingMountainEdge(game, startX, startY)
     return nil, nil  -- No suitable position found
 end
 
--- Find a position near forest for lumberyard
+-- Find a position near forest for Sawmill
 function Villager:findNonOverlappingForestPosition(game, startX, startY)
     local maxSearchRadius = 300
     local searchStep = 15
@@ -1076,7 +1076,7 @@ function Villager:transportResourceToVillage(game, resourceType, amount)
         self.resourceAmount = amount
         self.path = nil -- Force path recalculation
         
-        -- Special handling for workers at distant buildings like fishing huts
+        -- Special handling for workers at distant buildings like Fisherys
         if self.targetBuilding and Utils.distance(self.x, self.y, nearestVillage.x, nearestVillage.y) > Config.MAX_BUILD_DISTANCE then
             -- For distant buildings, calculate path immediately using direct methods
             -- to ensure villager can find their way to the village

@@ -123,7 +123,7 @@ function Map:canBuildAt(worldX, worldY)
     return tileType ~= Map.TILE_WATER and tileType ~= Map.TILE_MOUNTAIN
 end
 
--- Check if a position is adjacent to water (for fishing huts)
+-- Check if a position is adjacent to water (for Fisherys)
 function Map:isAdjacentToWater(worldX, worldY)
     -- First check if position is within map bounds
     if not Map:isWithinBounds(worldX, worldY) then
@@ -350,7 +350,7 @@ function Map:findNearestBuildablePosition(startX, startY)
     return nil, nil
 end
 
--- Find nearest position adjacent to water (for fishing huts)
+-- Find nearest position adjacent to water (for Fisherys)
 function Map:findNearestWaterEdge(startX, startY)
     -- First check if start position is already adjacent to water
     if Map:canBuildAt(startX, startY) and Map:isAdjacentToWater(startX, startY) then
@@ -368,7 +368,7 @@ function Map:findNearestWaterEdge(startX, startY)
             local x = startX + radius * math.cos(angle)
             local y = startY + radius * math.sin(angle)
             
-            -- Check if this location is suitable for a fishing hut
+            -- Check if this location is suitable for a Fishery
             if Map:canBuildAt(x, y) and Map:isAdjacentToWater(x, y) then
                 return x, y
             end
@@ -397,7 +397,7 @@ function Map:findNearestWaterEdge(startX, startY)
         for x = minX, maxX do
             local worldX, worldY = Map:tileToWorld(x, y)
             
-            -- Check if this is a valid position for a fishing hut
+            -- Check if this is a valid position for a Fishery
             if Map:canBuildAt(worldX, worldY) and Map:isAdjacentToWater(worldX, worldY) then
                 local distance = Utils.distance(startX, startY, worldX, worldY)
                 

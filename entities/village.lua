@@ -119,10 +119,10 @@ function Village:updateNeeds(game)
     self.needsResources = {}
     if game.resources.food < 20 then
         table.insert(self.needsResources, "farm")
-        table.insert(self.needsResources, "fishing_hut")
+        table.insert(self.needsResources, "Fishery")
     end
     if game.resources.wood < 30 then
-        table.insert(self.needsResources, "lumberyard")
+        table.insert(self.needsResources, "Sawmill")
     end
     if game.resources.stone < 20 then
         table.insert(self.needsResources, "mine")

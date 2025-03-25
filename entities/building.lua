@@ -162,11 +162,11 @@ function Building:updateWorkplace(game, dt)
         local resourceType = nil
         local resourceAmount = math.floor(1 * productionMultiplier)
         
-        if self.type == "farm" or self.type == "fishing_hut" then
+        if self.type == "farm" or self.type == "Fishery" then
             resourceType = "food"
         elseif self.type == "mine" then
             resourceType = "stone"
-        elseif self.type == "lumberyard" then
+        elseif self.type == "Sawmill" then
             resourceType = "wood"
         end
         
@@ -224,11 +224,11 @@ function Building:draw(UI)
         love.graphics.setColor(0.2, 0.8, 0.2)
     elseif self.type == "mine" then
         love.graphics.setColor(0.6, 0.6, 0.6)
-    elseif self.type == "lumberyard" then
+    elseif self.type == "Sawmill" then
         love.graphics.setColor(0.6, 0.4, 0.2)
     elseif self.type == "house" then
         love.graphics.setColor(0.9, 0.7, 0.5)
-    elseif self.type == "fishing_hut" then
+    elseif self.type == "Fishery" then
         love.graphics.setColor(0.2, 0.4, 0.8)
     elseif self.type == "market" then
         love.graphics.setColor(1, 0.7, 0.1) -- Gold/yellow for market
@@ -247,12 +247,12 @@ function Building:draw(UI)
         local currentFont = love.graphics.getFont()
         love.graphics.setFont(UI.entityNameFont)
         local name = self.type
-        if self.type == "fishing_hut" then
-            name = "Fishing Hut"
+        if self.type == "Fishery" then
+            name = "Fishery"
         elseif self.type == "mine" then
             name = "Mine"
-        elseif self.type == "lumberyard" then
-            name = "Lumberyard"
+        elseif self.type == "Sawmill" then
+            name = "Sawmill"
         elseif self.type == "house" then
             name = "House"
         elseif self.type == "farm" then

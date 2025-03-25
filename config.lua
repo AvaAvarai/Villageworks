@@ -21,7 +21,7 @@ local Config = {
             workCapacity = 2,
             description = "Extracts stone resources (must be built adjacent to mountains)"
         },
-        lumberyard = { 
+        Sawmill = { 
             cost = { wood = 10, stone = 10 }, 
             income = 6, 
             buildTime = 4, 
@@ -37,7 +37,7 @@ local Config = {
             spawnTime = 8, -- Faster villager spawning
             description = "Houses villagers and increases village population capacity"
         },
-        fishing_hut = {
+        Fishery = {
             cost = { wood = 25, stone = 5 },
             income = 7,
             buildTime = 4,
@@ -83,7 +83,7 @@ local Config = {
     -- Forest settings
     FOREST_WOOD_YIELD = 3,          -- Wood gained when clearing forest for roads or buildings
     FOREST_REGROWTH_CHANCE = 0.001, -- Chance per update that a grass tile next to forest becomes forest
-    LUMBERYARD_HARVEST_RADIUS = 200, -- How far lumberyard workers will go to harvest forests
+    Sawmill_HARVEST_RADIUS = 200, -- How far Sawmill workers will go to harvest forests
     
     -- Resource transport
     RESOURCE_CARRY_CAPACITY = 5,    -- How many resources a villager can carry

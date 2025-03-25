@@ -91,8 +91,8 @@ Builds the project to a single file that LÖVE can run.
 | House      | Increases population capacity and spawns villagers | - |
 | Farm       | Produces food | Food |
 | Mine       | Extracts stone | Stone |
-| Lumberyard | Harvests wood | Wood |
-| Fishing Hut| Catches fish | Food |
+| Sawmill | Harvests wood | Wood |
+| Fishery| Catches fish | Food |
 | Market     | Conducts trader work | Money |
 
 #### Resource System

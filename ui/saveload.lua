@@ -88,6 +88,9 @@ function SaveLoad.saveGame(game, filename)
         
         -- Save map state
         mapData = game.map.tiles,
+        mapWidth = game.map.width,
+        mapHeight = game.map.height,
+        tileSize = game.map.tileSize,
         
         -- Only save the necessary data from entities
         villages = {},
@@ -127,7 +130,9 @@ function SaveLoad.saveGame(game, filename)
                 currentVillagers = building.currentVillagers,
                 villagerCapacity = building.villagerCapacity,
                 productionTimer = building.productionTimer,
-                productionTime = building.productionTime
+                productionTime = building.productionTime,
+                tileX = math.floor(building.x / game.map.tileSize),
+                tileY = math.floor(building.y / game.map.tileSize)
             }
             table.insert(saveData.buildings, savedBuilding)
         end
@@ -164,7 +169,9 @@ function SaveLoad.saveGame(game, filename)
                 state = villager.state,
                 buildingId = villager.buildingId,
                 resourceType = villager.resourceType,
-                resourceAmount = villager.resourceAmount
+                resourceAmount = villager.resourceAmount,
+                tileX = math.floor(villager.x / game.map.tileSize),
+                tileY = math.floor(villager.y / game.map.tileSize)
             }
             table.insert(saveData.villagers, savedVillager)
         end
@@ -180,7 +187,11 @@ function SaveLoad.saveGame(game, filename)
                 startY = road.startY,
                 endX = road.endX,
                 endY = road.endY,
-                nodes = road.nodes
+                nodes = road.nodes,
+                startTileX = math.floor(road.startX / game.map.tileSize),
+                startTileY = math.floor(road.startY / game.map.tileSize),
+                endTileX = math.floor(road.endX / game.map.tileSize),
+                endTileY = math.floor(road.endY / game.map.tileSize)
             }
             table.insert(saveData.roads, savedRoad)
         end
@@ -274,6 +285,9 @@ function SaveLoad.loadGame(game, filepath)
             end
         end
         
+        -- Restore map dimensions and data
+        game.map.width = saveData.mapWidth
+        game.map.height = saveData.mapHeight
         game.map.tiles = saveData.mapData
     end
     
@@ -292,7 +306,10 @@ function SaveLoad.loadGame(game, filepath)
     -- Load buildings
     for _, savedBuilding in ipairs(saveData.buildings or {}) do
         local Building = require("entities/building")
-        local building = Building.new(savedBuilding.x, savedBuilding.y, savedBuilding.type, savedBuilding.villageId)
+        -- Use tile coordinates to ensure proper alignment
+        local x = savedBuilding.tileX * game.map.tileSize
+        local y = savedBuilding.tileY * game.map.tileSize
+        local building = Building.new(x, y, savedBuilding.type, savedBuilding.villageId)
         building.id = savedBuilding.id
         building.health = savedBuilding.health
         building.maxHealth = savedBuilding.maxHealth
@@ -323,7 +340,10 @@ function SaveLoad.loadGame(game, filepath)
     -- Load villagers
     for _, savedVillager in ipairs(saveData.villagers or {}) do
         local Villager = require("entities/villager")
-        local villager = Villager.new(savedVillager.x, savedVillager.y, savedVillager.villageId)
+        -- Use tile coordinates to ensure proper alignment
+        local x = savedVillager.tileX * game.map.tileSize
+        local y = savedVillager.tileY * game.map.tileSize
+        local villager = Villager.new(x, y, savedVillager.villageId)
         villager.id = savedVillager.id
         villager.targetX = savedVillager.targetX
         villager.targetY = savedVillager.targetY
@@ -346,7 +366,12 @@ function SaveLoad.loadGame(game, filepath)
     -- Load roads
     for _, savedRoad in ipairs(saveData.roads or {}) do
         local Road = require("entities/road")
-        local road = Road.new(savedRoad.startX, savedRoad.startY, savedRoad.endX, savedRoad.endY, savedRoad.villageId)
+        -- Use tile coordinates to ensure proper alignment
+        local startX = savedRoad.startTileX * game.map.tileSize
+        local startY = savedRoad.startTileY * game.map.tileSize
+        local endX = savedRoad.endTileX * game.map.tileSize
+        local endY = savedRoad.endTileY * game.map.tileSize
+        local road = Road.new(startX, startY, endX, endY, savedRoad.villageId)
         road.id = savedRoad.id
         road.nodes = savedRoad.nodes
         table.insert(game.roads, road)

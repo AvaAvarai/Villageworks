@@ -172,16 +172,11 @@ function Trader:findForeignMarket(game)
             -- Calculate a score based on distance and connection
             local maxDistance = Config.WORLD_WIDTH / 2
             
-            -- Inverse the distance score so CLOSER markets get HIGHER scores
-            local distanceScore = 1.0 - (math.min(distance, maxDistance) / maxDistance)
+            -- Distance score so farther markets get higher scores
+            local distanceScore = math.min(distance, maxDistance) / maxDistance
             
             -- Calculate final score - higher is better
             local score = distanceScore
-            
-            -- Slightly penalize extremely far unconnected markets
-            if distance > maxDistance and not isConnected then
-                score = score * 0.5
-            end
             
             print("Market score: " .. score .. " (higher is better)")
             

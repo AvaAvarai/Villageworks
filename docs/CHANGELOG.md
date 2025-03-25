@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Traders farther markets get higher scores.
 - Traders use A* and wont walk over mountains or water.
 - Traders will look for new markets.
 - Renamed 'Lumberyard' into 'Sawmill'.
@@ -17,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-- Trader reload.
+- Trader refresh market query.
 
 ## [0.1.4] - 2025-03-24
 

@@ -746,11 +746,6 @@ function MainMenu.startGameWithSelectedSize(game)
     Config.WORLD_WIDTH = worldSize.width
     Config.WORLD_HEIGHT = worldSize.height
     
-    -- Stop the background music
-    if MainMenu.backgroundMusic then
-        MainMenu.backgroundMusic:stop()
-    end
-    
     -- Hide menus and start the game
     MainMenu.showWorldSizeMenu = false
     MainMenu.UI.showMainMenu = false

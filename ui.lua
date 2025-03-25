@@ -35,6 +35,12 @@ function UI.init()
     UI.tooltip = nil
     UI.infoKeyDown = false  -- Track when the 'i' key is held down
     
+    -- FPS tracking
+    UI.fps = 0
+    UI.fpsUpdateTime = 0
+    UI.fpsUpdateInterval = 0.5  -- Update FPS every 0.5 seconds
+    UI.fpsFrameCount = 0
+    
     -- Hover state for menu buttons
     UI.hoveredButton = nil
     
@@ -66,6 +72,16 @@ end
 
 -- Update UI state
 function UI.update(game, dt)
+    -- Update FPS counter
+    UI.fpsUpdateTime = UI.fpsUpdateTime + dt
+    UI.fpsFrameCount = UI.fpsFrameCount + 1
+    
+    if UI.fpsUpdateTime >= UI.fpsUpdateInterval then
+        UI.fps = math.floor(UI.fpsFrameCount / UI.fpsUpdateTime)
+        UI.fpsFrameCount = 0
+        UI.fpsUpdateTime = 0
+    end
+    
     -- Update main menu if showing
     if UI.showMainMenu then
         MainMenu.update(dt)
@@ -327,6 +343,13 @@ function UI.draw(game)
         return
     end
     
+    -- Draw FPS counter if info key is pressed
+    if UI.infoKeyDown then
+        love.graphics.setColor(1, 1, 1, 0.8)
+        love.graphics.setFont(UI.smallFont)
+        love.graphics.print("FPS: " .. UI.fps, 10, 10)
+    end
+    
     -- Draw game world
     game.camera:beginDraw()
     
@@ -502,6 +525,13 @@ function UI.draw(game)
     local traderValue = #game.traders
     love.graphics.print(traderValue, currentXOffset + labelWidth, yPos)
     currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(traderValue) + baseSpacing
+    
+    -- Draw FPS counter if info key is pressed
+    if UI.infoKeyDown then
+        love.graphics.setColor(1, 1, 1, 0.8)
+        love.graphics.setFont(UI.smallFont)
+        love.graphics.print("FPS: " .. UI.fps, 10, hudHeight + 5)
+    end
     
     -- Restore regular color for other UI
     love.graphics.setColor(1, 1, 1)

@@ -92,7 +92,8 @@ function love.load()
         minwidth = 800,
         minheight = 600,
         highdpi = true,
-        msaa = 4
+        msaa = 4,
+        vsync = true
     })
     
     -- Initialize camera

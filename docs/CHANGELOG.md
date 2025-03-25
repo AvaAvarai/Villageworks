@@ -6,12 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Enabled vsync.
+- FPS display on 'i' key.
 - Main menu music loop.
 - Village tile.
 - Village upgrade to Town to City to Empire button improving build radius.
 
 ### Changed
 
+- Don't stop main menu music during gameplay.
 - Traders farther markets get higher scores.
 - Traders use A* and wont walk over mountains or water.
 - Traders will look for new markets.

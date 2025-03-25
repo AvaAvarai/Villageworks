@@ -192,6 +192,8 @@ This project is licensed under the MIT License, see the [LICENSE](./LICENSE) fil
   - Main menu background art [City In A Canyon](https://opengameart.org/content/city-in-a-canyon)
   - Mountain tile [Tiny Basic 16 Tiles](https://opengameart.org/content/tiny-16-basic)
   - Main menu music [Hero Immortal](https://opengameart.org/content/hero-immortal)
+  - Menu hover sfx [8bit Menu Highlight](https://opengameart.org/content/8bit-menu-highlight)
+  - Menu select sfx (unused currently) [8bit Menu Select](https://opengameart.org/content/8bit-menu-select)
 
 ---
 

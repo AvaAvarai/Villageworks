@@ -55,10 +55,10 @@ function UI.init()
     UI.showPauseMenu = false -- Pause menu initially hidden
     UI.gameRunning = false   -- Game not running until started
     
-    -- Initialize modules
-    Documentation.init(UI)
+    -- Initialize modules in the correct order
+    MainMenu.init(UI)  -- Initialize MainMenu first
+    Documentation.init(UI, MainMenu)  -- Pass MainMenu reference to Documentation
     SaveLoad.init(UI)
-    MainMenu.init(UI)
     Roads.init(UI)
     Tooltip.init(UI)
     BuildMenu.init(UI)

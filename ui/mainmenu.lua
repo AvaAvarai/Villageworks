@@ -6,6 +6,8 @@ function MainMenu.init(UI)
     
     -- Main menu state
     MainMenu.hoveredButton = nil
+    MainMenu.previousHoveredButton = nil  -- Track previous hover state
+    MainMenu.buttonClicked = false  -- Flag to disable hover sounds after a button is clicked
     
     -- Main menu options
     MainMenu.options = {
@@ -59,6 +61,21 @@ function MainMenu.init(UI)
     -- Create ordered list of world sizes for easier iteration
     MainMenu.worldSizeOrder = {"small", "medium", "large", "huge"}
 
+    -- Initialize sounds with error handling
+    local success, result = pcall(function()
+        local hoverSound = love.audio.newSource("data/vgmenuhighlight.wav", "static")
+        hoverSound:setVolume(0.7)
+        return hoverSound
+    end)
+    
+    if success then
+        MainMenu.hoverSound = result
+        MainMenu.hoverSoundEnabled = true
+    else
+        print("Warning: Could not load menu hover sound. Sound effects disabled.")
+        MainMenu.hoverSoundEnabled = false
+    end
+    
     -- Initialize background music
     MainMenu.backgroundMusic = love.audio.newSource("data/main_menu.mp3", "stream")
     MainMenu.backgroundMusic:setLooping(true)
@@ -471,6 +488,9 @@ function MainMenu.update(dt)
     local UI = MainMenu.UI
     local mouseX, mouseY = love.mouse.getPosition()
     
+    -- Store previous hover state before updating
+    local previousHovered = MainMenu.hoveredButton
+    
     -- Reset hover state
     MainMenu.hoveredButton = nil
     
@@ -507,6 +527,16 @@ function MainMenu.update(dt)
             MainMenu.hoveredButton = option
             break
         end
+    end
+    
+    -- Play hover sound if hovering over a new button AND no button has been clicked yet
+    if MainMenu.hoveredButton ~= nil and 
+       MainMenu.hoveredButton ~= previousHovered and 
+       not MainMenu.buttonClicked and 
+       MainMenu.hoverSoundEnabled then
+        
+        MainMenu.hoverSound:stop()  -- Stop any currently playing sound
+        MainMenu.hoverSound:play()
     end
 end
 
@@ -585,6 +615,9 @@ end
 
 -- Handle main menu clicks
 function MainMenu.handleClick(game, x, y, Documentation, SaveLoad)
+    -- Disable hover sounds when any button is clicked
+    MainMenu.buttonClicked = true
+    
     local UI = MainMenu.UI
     
     -- If world size selection is showing, handle those clicks
@@ -671,6 +704,7 @@ function MainMenu.handleWorldSizeClick(game, x, y)
     -- Check if clicking outside the menu (cancel)
     if x < menuX or x > menuX + menuWidth or y < menuY or y > menuY + menuHeight then
         MainMenu.showWorldSizeMenu = false
+        MainMenu.reset_hover_sound()  -- Reset hover sound when closing menu
         return true
     end
     
@@ -678,6 +712,7 @@ function MainMenu.handleWorldSizeClick(game, x, y)
     if x >= menuX + menuWidth - 30 and x <= menuX + menuWidth - 10 and
        y >= menuY + 10 and y <= menuY + 30 then
         MainMenu.showWorldSizeMenu = false
+        MainMenu.reset_hover_sound()  -- Reset hover sound when closing menu
         return true
     end
     
@@ -772,6 +807,7 @@ function MainMenu.keypressed(key, SaveLoad)
     if MainMenu.showWorldSizeMenu then
         if key == "escape" then
             MainMenu.showWorldSizeMenu = false
+            MainMenu.reset_hover_sound()  -- Reset hover sound when escaping from menu
             return true
         end
     end
@@ -785,6 +821,11 @@ function MainMenu.keypressed(key, SaveLoad)
     end
     
     return false
+end
+
+-- Function to reset hover sound state (called when returning to main menu)
+function MainMenu.reset_hover_sound()
+    MainMenu.buttonClicked = false
 end
 
 return MainMenu 

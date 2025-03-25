@@ -696,6 +696,13 @@ function SaveLoad.handleLoadDialogClick(game, x, y)
         SaveLoad.showLoadDialog = false
         SaveLoad.selectedSaveFile = nil
         SaveLoad.loadDialogScroll = 0 -- Reset scroll position
+        
+        -- Reset the hover sound in MainMenu
+        local MainMenu = require("ui.mainmenu")
+        if MainMenu then
+            MainMenu.reset_hover_sound()
+        end
+        
         return true
     end
     

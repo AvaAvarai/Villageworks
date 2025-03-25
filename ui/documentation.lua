@@ -20,8 +20,9 @@ local function loadDocumentFile(path, defaultMessage)
 end
 
 -- Initialize documentation system
-function Documentation.init(UI)
+function Documentation.init(UI, MainMenuModule)
     Documentation.UI = UI -- Store reference to main UI module
+    Documentation.MainMenu = MainMenuModule -- Store reference to MainMenu
     Documentation.showPopup = false
     Documentation.popupType = nil
     Documentation.popupScroll = 0
@@ -249,6 +250,12 @@ function Documentation.handleClick(x, y)
        y >= popupY + 20 and y <= popupY + 45 then
         Documentation.showPopup = false
         Documentation.popupType = nil
+        
+        -- Use the stored reference to MainMenu
+        if Documentation.MainMenu and Documentation.MainMenu.reset_hover_sound then
+            Documentation.MainMenu.reset_hover_sound()
+        end
+        
         return true
     end
     

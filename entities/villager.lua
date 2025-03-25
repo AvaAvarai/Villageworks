@@ -4,7 +4,22 @@ local Utils = require("utils")
 local Villager = {}
 Villager.__index = Villager
 
+-- Villager sprites
+local villagerSprites = nil
+local spriteSize = 8 -- 8x8 pixel sprites
+local spriteGridSize = 4 -- 4x4 grid
+
+-- Load the sprite sheet if not already loaded
+local function loadSpriteSheet()
+    if not villagerSprites then
+        villagerSprites = love.graphics.newImage("data/sprites.png")
+    end
+end
+
 function Villager.new(x, y, villageId, homeBuilding)
+    -- Make sure sprite sheet is loaded
+    loadSpriteSheet()
+    
     local villager = setmetatable({
         id = Utils.generateId(),
         x = x,
@@ -17,6 +32,10 @@ function Villager.new(x, y, villageId, homeBuilding)
         targetY = nil,
         workTimer = 0,
         speed = Config.VILLAGER_SPEED,
+        
+        -- Sprite information
+        spriteRow = math.random(0, spriteGridSize - 1),
+        spriteCol = math.random(0, spriteGridSize - 1),
         
         -- Resource transport
         carriedResource = nil,
@@ -348,51 +367,26 @@ function Villager.update(villagers, game, dt)
     end
 end
 
+-- Change to a new random sprite
+function Villager:changeSprite()
+    self.spriteRow = math.random(0, spriteGridSize - 1)
+    self.spriteCol = math.random(0, spriteGridSize - 1)
+end
+
+-- Find work in any connected village
 function Villager:findWork(game)
-    -- First check for building tasks - highest priority
+    -- First try to find a building task, which has highest priority
     if self:findBuildTask(game) then
         return true
     end
     
-    -- Find closest building that needs workers
-    local closestBuilding = nil
-    local shortestDistance = math.huge
-    
-    for _, building in ipairs(game.buildings) do
-        -- Check if building needs workers
-        if building.type ~= "house" and #building.workers < building.workersNeeded then
-            local distance = Utils.distance(self.x, self.y, building.x, building.y)
-            
-            if distance < shortestDistance then
-                shortestDistance = distance
-                closestBuilding = building
-            end
-        end
-    end
-    
-    -- If found a building, go to work there
-    if closestBuilding then
-        self.state = "going_to_work"
-        self.targetX = closestBuilding.x
-        self.targetY = closestBuilding.y
-        self.targetBuilding = closestBuilding
-        
-        -- Add this villager to the building's worker list
-        table.insert(closestBuilding.workers, self)
-        
+    -- Try to find a job in connected villages
+    if self:lookForWorkInConnectedVillages(game) then
         return true
     end
     
-    -- No work available, wander around village
-    if math.random() < 0.02 then
-        local village = self.homeVillage
-        
-        if village then
-            self.targetX, self.targetY = Utils.randomPositionAround(village.x, village.y, 10, 50)
-            self.state = "going_to_work" -- reuse the movement state
-        end
-    end
-    
+    -- If no work found, go back to the nearest village
+    self:returnToNearestVillage(game)
     return false
 end
 
@@ -499,9 +493,25 @@ function Villager:moveAlongPath(game, dt)
 end
 
 function Villager:draw(game)
-    -- Always draw the base villager circle first with consistent size
-    love.graphics.setColor(0.2, 0.6, 0.9)
-    love.graphics.circle("fill", self.x, self.y, 4)
+    -- Always draw the villager sprite
+    love.graphics.setColor(1, 1, 1)
+    
+    -- Calculate source quad from the sprite sheet
+    local quad = love.graphics.newQuad(
+        self.spriteCol * spriteSize,
+        self.spriteRow * spriteSize,
+        spriteSize,
+        spriteSize,
+        villagerSprites:getDimensions()
+    )
+    
+    -- Draw the sprite centered on the villager's position
+    love.graphics.draw(
+        villagerSprites,
+        quad,
+        self.x - spriteSize/2,
+        self.y - spriteSize/2
+    )
     
     -- Add road indicator if on a road
     if self:isOnRoad(game) then
@@ -1082,6 +1092,20 @@ function Villager:findNonOverlappingForestPosition(game, startX, startY)
     return nil, nil  -- No suitable position found
 end
 
+-- Helper function to return to nearest village when no work is found
+function Villager:returnToNearestVillage(game)
+    local nearestVillage = self:findNearestVillage(game)
+    if nearestVillage then
+        self.state = "going_to_work" -- Reuse this state for movement
+        self.targetX = nearestVillage.x
+        self.targetY = nearestVillage.y
+        self.path = nil -- Force path recalculation
+        self.needsPathRecalculation = true
+        return true
+    end
+    return false
+end
+
 -- Add a helper function to ensure all worker types handle resource transport consistently
 function Villager:transportResourceToVillage(game, resourceType, amount)
     -- Only transport if we have resources to carry
@@ -1161,6 +1185,7 @@ function Villager:completeTask(game)
         self.targetY = nearestVillage.y
         self.path = nil
         self:calculatePath(game, self.targetX, self.targetY)
+        
         return true
     end
     

@@ -193,6 +193,7 @@ This project is licensed under the MIT License, see the [LICENSE](./LICENSE) fil
   - Main menu music [Hero Immortal](https://opengameart.org/content/hero-immortal)
   - Menu hover sfx [8bit Menu Highlight](https://opengameart.org/content/8bit-menu-highlight)
   - Menu select sfx [8bit Menu Select](https://opengameart.org/content/8bit-menu-select)
+  - Villager sprites [8x8 character and sprite sheet](https://opengameart.org/content/8x8-character-and-sprite-sheet)
 
 ---
 

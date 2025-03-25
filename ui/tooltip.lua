@@ -86,14 +86,30 @@ function Tooltip.update(game)
         -- Create tooltip for villages
         local village = Tooltip.UI.hoveredVillage
         local totalPopulation = village.villagerCount
+        local Village = require("entities/village")
+        
+        -- Get tier information
+        local tierName = Village.TIER_NAMES[village.tier]
+        local buildRadius = village:getBuildRadius()
         
         -- Initialize tooltip
         Tooltip.activeTooltip = {
             title = village.name,
             lines = {
-                "Population: " .. totalPopulation .. "/" .. village.populationCapacity
+                "Tier: " .. tierName,
+                "Population: " .. totalPopulation .. "/" .. village.populationCapacity,
+                "Building Radius: " .. math.floor(buildRadius)
             }
         }
+        
+        -- Add upgrade information if not at max tier
+        if village.tier < Village.TIERS.EMPIRE then
+            local nextTier = Village.TIER_NAMES[village.tier + 1]
+            local costs = Village.UPGRADE_COSTS[village.tier + 1]
+            table.insert(Tooltip.activeTooltip.lines, "")
+            table.insert(Tooltip.activeTooltip.lines, "Next upgrade: " .. nextTier)
+            table.insert(Tooltip.activeTooltip.lines, "Cost: $" .. costs.money .. ", Wood: " .. costs.wood .. ", Stone: " .. costs.stone)
+        end
         
         -- Calculate resource production
         local resourceProduction = {

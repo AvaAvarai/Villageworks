@@ -341,19 +341,21 @@ function UI.draw(game)
     
     -- Draw building radius overlay for hovered village
     if UI.hoveredVillage then
+        local buildRadius = UI.hoveredVillage:getBuildRadius()
+        
         -- Draw a transparent circle showing the building radius
         love.graphics.setColor(0.3, 0.7, 0.9, 0.15) -- Light blue, mostly transparent
-        love.graphics.circle("fill", UI.hoveredVillage.x, UI.hoveredVillage.y, Config.MAX_BUILD_DISTANCE)
+        love.graphics.circle("fill", UI.hoveredVillage.x, UI.hoveredVillage.y, buildRadius)
         
         -- Draw a slightly more visible border
         love.graphics.setColor(0.3, 0.7, 0.9, 0.3)
         love.graphics.setLineWidth(2)
-        love.graphics.circle("line", UI.hoveredVillage.x, UI.hoveredVillage.y, Config.MAX_BUILD_DISTANCE)
+        love.graphics.circle("line", UI.hoveredVillage.x, UI.hoveredVillage.y, buildRadius)
         love.graphics.setLineWidth(1)
         
         -- Label the radius
         love.graphics.setColor(1, 1, 1, 0.7)
-        love.graphics.print("Building Radius", UI.hoveredVillage.x - 50, UI.hoveredVillage.y - Config.MAX_BUILD_DISTANCE - 20)
+        love.graphics.print("Building Radius", UI.hoveredVillage.x - 50, UI.hoveredVillage.y - buildRadius - 20)
     end
 
     -- Draw village placement preview if in building mode
@@ -653,7 +655,7 @@ function UI.drawVillageSummary(game)
     -- Only show if we have multiple villages
     if #game.villages <= 1 then return end
     
-    local width = 150
+    local width = 200 -- Increased width to fit tier information
     local lineHeight = 18
     local padding = 5
     local height = padding * 2 + lineHeight * (#game.villages + 1)
@@ -675,7 +677,9 @@ function UI.drawVillageSummary(game)
     love.graphics.setFont(UI.smallFont)
     for i, village in ipairs(game.villages) do
         local totalPop = village.villagerCount
-        local text = village.name .. ": " .. totalPop .. "/" .. village.populationCapacity
+        local Village = require("entities/village")
+        local tierName = Village.TIER_NAMES[village.tier]
+        local text = village.name .. " (" .. tierName .. "): " .. totalPop .. "/" .. village.populationCapacity
         
         -- Highlight the village if it's hovered
         if UI.hoveredVillage and UI.hoveredVillage.id == village.id then

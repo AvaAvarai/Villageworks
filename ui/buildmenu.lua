@@ -30,7 +30,15 @@ function BuildMenu.drawBuildMenu(game)
     -- Draw title
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(UI.bigFont)
-    love.graphics.print("Build Menu", x + 20, y + 15)
+    
+    -- Show selected village name and tier in the title
+    if game.selectedVillage then
+        local Village = require("entities/village")
+        local tierName = Village.TIER_NAMES[game.selectedVillage.tier]
+        love.graphics.print(game.selectedVillage.name .. " (" .. tierName .. ")", x + 20, y + 15)
+    else
+        love.graphics.print("Build Menu", x + 20, y + 15)
+    end
     
     -- Draw building options
     love.graphics.setFont(UI.font)
@@ -132,6 +140,51 @@ function BuildMenu.drawBuildMenu(game)
     love.graphics.print(Config.UI_VILLAGE_BUILD_BUTTON_TEXT, x + 30, bottomY + 45)
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.print("Cost: $" .. Config.VILLAGE_COST .. ", Wood: 20", x + 125, bottomY + 45)
+    
+    -- Add village upgrade button if a village is selected
+    if game.selectedVillage then
+        local Village = require("entities/village")
+        local canUpgrade, reason = game.selectedVillage:canUpgrade(game)
+        
+        -- Draw upgrade button in right column
+        if game.selectedVillage.tier < Village.TIERS.EMPIRE then
+            -- Button background changes color based on whether upgrade is possible
+            if canUpgrade then
+                love.graphics.setColor(0.4, 0.4, 0.8) -- Blue when can upgrade
+            else
+                love.graphics.setColor(0.5, 0.5, 0.5) -- Gray when cannot upgrade
+            end
+            
+            -- Draw the upgrade button
+            love.graphics.rectangle("fill", x + menuWidth - 140, bottomY, 120, 60, 8, 8)
+            
+            -- Button text
+            love.graphics.setFont(UI.font)
+            love.graphics.setColor(1, 1, 1)
+            local nextTier = Village.TIER_NAMES[game.selectedVillage.tier + 1]
+            love.graphics.print("Upgrade to\n" .. nextTier, x + menuWidth - 130, bottomY + 10)
+            
+            -- Show upgrade cost
+            love.graphics.setFont(UI.smallFont)
+            local costs = Village.UPGRADE_COSTS[game.selectedVillage.tier + 1]
+            love.graphics.print("$" .. costs.money .. ", Wood: " .. costs.wood .. ", Stone: " .. costs.stone, 
+                               x + menuWidth - 130, bottomY + 40)
+            
+            -- Show reason why upgrade isn't possible
+            if not canUpgrade then
+                love.graphics.setColor(1, 0.7, 0.7)
+                -- Draw reason text below the button
+                love.graphics.print(reason, x + menuWidth - 140, bottomY + 65)
+            end
+        else
+            -- Already at max tier
+            love.graphics.setColor(0.7, 0.7, 0.7)
+            love.graphics.rectangle("fill", x + menuWidth - 140, bottomY, 120, 60, 8, 8)
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.setFont(UI.font)
+            love.graphics.print("Maximum\nTier Reached", x + menuWidth - 130, bottomY + 15)
+        end
+    end
     
     -- Draw close button
     love.graphics.setColor(1, 0.3, 0.3)
@@ -316,6 +369,26 @@ function BuildMenu.handleBuildMenuClick(game, x, y)
         BuildMenu.showBuildMenu = false
         UI.showBuildMenu = false
         return true
+    end
+    
+    -- Check if we're clicking the village upgrade button
+    if game.selectedVillage and 
+       x >= menuX + menuWidth - 140 and x <= menuX + menuWidth - 20 and
+       y >= menuY + menuHeight - 80 and y <= menuY + menuHeight - 20 then
+        -- Try to upgrade the village
+        local Village = require("entities/village")
+        if game.selectedVillage.tier < Village.TIERS.EMPIRE then
+            local success, message = game.selectedVillage:upgrade(game)
+            if success then
+                UI.showMessage(message)
+            else
+                UI.showMessage("Cannot upgrade: " .. message)
+            end
+            return true
+        else
+            UI.showMessage("Village is already at maximum tier!")
+            return true
+        end
     end
     
     -- Check if we're clicking on building queue buttons

@@ -9,6 +9,37 @@ Village.__index = Village
 -- Track used names to avoid duplicates
 local usedNames = {}
 
+-- Village tier definitions
+Village.TIERS = {
+    VILLAGE = 1,
+    TOWN = 2,
+    CITY = 3,
+    EMPIRE = 4
+}
+
+-- Tier names for display
+Village.TIER_NAMES = {
+    [Village.TIERS.VILLAGE] = "Village",
+    [Village.TIERS.TOWN] = "Town",
+    [Village.TIERS.CITY] = "City",
+    [Village.TIERS.EMPIRE] = "Empire"
+}
+
+-- Radius multipliers for each tier
+Village.TIER_RADIUS_MULTIPLIERS = {
+    [Village.TIERS.VILLAGE] = 1.0,
+    [Village.TIERS.TOWN] = 1.5,
+    [Village.TIERS.CITY] = 2.0,
+    [Village.TIERS.EMPIRE] = 3.0
+}
+
+-- Upgrade costs for each tier
+Village.UPGRADE_COSTS = {
+    [Village.TIERS.TOWN] = { money = 200, wood = 100, stone = 100 },
+    [Village.TIERS.CITY] = { money = 500, wood = 200, stone = 200 },
+    [Village.TIERS.EMPIRE] = { money = 1000, wood = 400, stone = 400 }
+}
+
 function Village.new(x, y)
     -- Get a unique historical name for this village
     local name = VillageNames.getUniqueName(usedNames)
@@ -31,7 +62,10 @@ function Village.new(x, y)
         -- House tracking
         houseCount = 0,      -- Track how many houses this village has
         populationGrowthRate = 0, -- Track how quickly population is growing
-        lastPopulation = 0   -- For calculating growth rate
+        lastPopulation = 0,   -- For calculating growth rate
+        
+        -- Village tier tracking
+        tier = Village.TIERS.VILLAGE -- Start as basic village
     }, Village)
     
     return village
@@ -173,7 +207,8 @@ function Village:updateNeeds(game)
             -- If no road exists and village is within reasonable distance, consider building a road
             if not hasRoad then
                 local distance = Utils.distance(self.x, self.y, village.x, village.y)
-                if distance <= Config.MAX_BUILD_DISTANCE * 2 then
+                local maxDistance = self:getBuildRadius() * 2  -- Use the build radius which varies by tier
+                if distance <= maxDistance then
                     -- Higher priority for closer villages with more population
                     local otherVillagePop = village.villagerCount
                     local priority = otherVillagePop / (distance / 100)
@@ -241,21 +276,25 @@ function Village:draw(game)
         love.graphics.setColor(0.8, 0.2, 0.2)
     end
     
-    love.graphics.circle("fill", self.x, self.y, 15)
+    -- Draw bigger circle for higher tiers
+    local radius = 15 + (self.tier - 1) * 2
+    love.graphics.circle("fill", self.x, self.y, radius)
     love.graphics.setColor(1, 1, 1)
     -- Use the entity name font for the village name
     local currentFont = love.graphics.getFont()
     love.graphics.setFont(UI.entityNameFont)
     
     -- Draw black background rectangle behind the name
-    local nameWidth = UI.entityNameFont:getWidth(self.name)
+    local tierName = Village.TIER_NAMES[self.tier]
+    local displayName = self.name .. " (" .. tierName .. ")"
+    local nameWidth = UI.entityNameFont:getWidth(displayName)
     local nameHeight = UI.entityNameFont:getHeight()
     love.graphics.setColor(0, 0, 0, 1.0)
     love.graphics.rectangle("fill", self.x - 20, self.y - 30, nameWidth, nameHeight)
     
     -- Draw the name in white
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(self.name, self.x - 20, self.y - 30)
+    love.graphics.print(displayName, self.x - 20, self.y - 30)
     love.graphics.setFont(currentFont)
 end
 
@@ -287,19 +326,23 @@ function Village:isConnectedTo(otherVillage, game)
             local endDist1 = Utils.distance(road.endX, road.endY, self.x, self.y)
             local endDist2 = Utils.distance(road.endX, road.endY, otherVillage.x, otherVillage.y)
             
+            -- Get build radius for each village
+            local selfRadius = self:getBuildRadius()
+            local otherRadius = otherVillage:getBuildRadius()
+            
             -- Check if both villages are within building radius of the start point
-            if startDist1 <= Config.MAX_BUILD_DISTANCE and startDist2 <= Config.MAX_BUILD_DISTANCE then
+            if startDist1 <= selfRadius and startDist2 <= otherRadius then
                 return true
             end
             
             -- Check if both villages are within building radius of the end point
-            if endDist1 <= Config.MAX_BUILD_DISTANCE and endDist2 <= Config.MAX_BUILD_DISTANCE then
+            if endDist1 <= selfRadius and endDist2 <= otherRadius then
                 return true
             end
             
             -- Check if one village is near the start and the other is near the end
-            if (startDist1 <= Config.MAX_BUILD_DISTANCE and endDist2 <= Config.MAX_BUILD_DISTANCE) or
-               (startDist2 <= Config.MAX_BUILD_DISTANCE and endDist1 <= Config.MAX_BUILD_DISTANCE) then
+            if (startDist1 <= selfRadius and endDist2 <= otherRadius) or
+               (startDist2 <= otherRadius and endDist1 <= selfRadius) then
                 return true
             end
         end
@@ -319,6 +362,68 @@ function Village:getConnectedVillages(game)
     end
     
     return connectedVillages
+end
+
+-- Get the building radius for this village based on its tier
+function Village:getBuildRadius()
+    return Config.MAX_BUILD_DISTANCE * Village.TIER_RADIUS_MULTIPLIERS[self.tier]
+end
+
+-- Check if this village can be upgraded to the next tier
+function Village:canUpgrade(game)
+    -- If already at max tier, can't upgrade
+    if self.tier >= Village.TIERS.EMPIRE then
+        return false, "Already at maximum tier"
+    end
+    
+    -- Get costs for the next tier
+    local nextTier = self.tier + 1
+    local costs = Village.UPGRADE_COSTS[nextTier]
+    
+    -- Check if we can afford it
+    if game.money < costs.money then
+        return false, "Not enough money"
+    end
+    if game.resources.wood < costs.wood then
+        return false, "Not enough wood"
+    end
+    if game.resources.stone < costs.stone then
+        return false, "Not enough stone"
+    end
+    
+    -- Additional requirements based on tier
+    if nextTier == Village.TIERS.TOWN and self.villagerCount < 10 then
+        return false, "Requires at least 10 villagers"
+    elseif nextTier == Village.TIERS.CITY and self.villagerCount < 20 then
+        return false, "Requires at least 20 villagers"
+    elseif nextTier == Village.TIERS.EMPIRE and self.villagerCount < 30 then
+        return false, "Requires at least 30 villagers"
+    end
+    
+    return true, nil
+end
+
+-- Upgrade this village to the next tier
+function Village:upgrade(game)
+    local canUpgrade, reason = self:canUpgrade(game)
+    if not canUpgrade then
+        return false, reason
+    end
+    
+    -- Get costs for the next tier
+    local nextTier = self.tier + 1
+    local costs = Village.UPGRADE_COSTS[nextTier]
+    
+    -- Deduct costs
+    game.money = game.money - costs.money
+    game.resources.wood = game.resources.wood - costs.wood
+    game.resources.stone = game.resources.stone - costs.stone
+    
+    -- Upgrade to next tier
+    self.tier = nextTier
+    
+    -- Return success
+    return true, "Upgraded to " .. Village.TIER_NAMES[self.tier]
 end
 
 return Village 

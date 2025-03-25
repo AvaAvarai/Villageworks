@@ -241,7 +241,7 @@ end
 -- Draw text labels separately so they appear on top of all other elements
 function Building:drawText(UI)
     -- Check if we should show information
-    local showInfo = UI.infoKeyDown or (UI.hoveredBuilding and UI.hoveredBuilding.id == self.id)
+    local showInfo = UI.showBuildingInfo or (UI.hoveredBuilding and UI.hoveredBuilding.id == self.id)
     
     -- Only show text info if building is hovered or info key is down
     if showInfo then

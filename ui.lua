@@ -33,7 +33,8 @@ function UI.init()
     UI.selectedBuilding = nil
     UI.showBuildMenu = false
     UI.tooltip = nil
-    UI.infoKeyDown = false  -- Track when the 'i' key is held down
+    UI.showFPS = false  -- Toggle for FPS display
+    UI.showBuildingInfo = false  -- Toggle for building info display
     
     -- FPS tracking
     UI.fps = 0
@@ -343,13 +344,6 @@ function UI.draw(game)
         return
     end
     
-    -- Draw FPS counter if info key is pressed
-    if UI.infoKeyDown then
-        love.graphics.setColor(1, 1, 1, 0.8)
-        love.graphics.setFont(UI.smallFont)
-        love.graphics.print("FPS: " .. UI.fps, 10, 10)
-    end
-    
     -- Draw game world
     game.camera:beginDraw()
     
@@ -526,8 +520,8 @@ function UI.draw(game)
     love.graphics.print(traderValue, currentXOffset + labelWidth, yPos)
     currentXOffset = currentXOffset + labelWidth + UI.mediumFont:getWidth(traderValue) + baseSpacing
     
-    -- Draw FPS counter if info key is pressed
-    if UI.infoKeyDown then
+    -- Draw FPS counter if enabled
+    if UI.showFPS then
         love.graphics.setColor(1, 1, 1, 0.8)
         love.graphics.setFont(UI.smallFont)
         love.graphics.print("FPS: " .. UI.fps, 10, hudHeight + 5)
@@ -584,7 +578,7 @@ function UI.draw(game)
     -- Draw instructions at bottom
     love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.setFont(UI.smallFont)
-    love.graphics.print("Press B for build menu. Hold I to show building info. SPACE for fast forward. Arrow keys to move camera. Scroll to zoom. ESC to pause.", 
+    love.graphics.print("Press B for build menu. Press I to toggle information. SPACE to fast forward time. Arrow keys to move camera. Scroll to zoom. ESC to pause.", 
                         10, love.graphics.getHeight() - 20)
     
     -- Draw village summary panel
@@ -670,8 +664,10 @@ function drawEntities(game)
     end
     
     -- Draw all building text AFTER all other entities to ensure it appears on top
-    for _, building in ipairs(game.buildings) do
-        building:drawText(UI)
+    if UI.showBuildingInfo then
+        for _, building in ipairs(game.buildings) do
+            building:drawText(UI)
+        end
     end
 end
 
@@ -1025,15 +1021,14 @@ function UI.keypressed(game, key)
     SaveLoad.keypressed(game, key)
 
     if key == "i" then
-        UI.infoKeyDown = true
+        UI.showBuildingInfo = not UI.showBuildingInfo  -- Toggle building info display
+        UI.showFPS = not UI.showFPS  -- Toggle FPS display
     end
 end
 
--- Handle key release events
+-- Handle key release events (empty function since we don't need it anymore)
 function UI.keyreleased(key)
-    if key == "i" then
-        UI.infoKeyDown = false
-    end
+    -- Empty function to prevent nil value errors
 end
 
 -- Handle mouse wheel events

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- 'i' key is a toggle.
 - Don't stop main menu music during gameplay.
 - Traders farther markets get higher scores.
 - Traders use A* and wont walk over mountains or water.

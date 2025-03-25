@@ -647,7 +647,6 @@ function drawEntities(game)
     
     -- Draw all traders
     if game.traders then
-        print("Drawing " .. #game.traders .. " traders in UI.")
         for _, trader in ipairs(game.traders) do
             trader:draw()
             

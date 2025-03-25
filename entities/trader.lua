@@ -30,6 +30,7 @@ function Trader.new(x, y, marketId, villageId)
         pathTargetX = nil,
         pathTargetY = nil,
         currentPathIndex = 1,
+        wasOnRoad = false,
     }, Trader)
     
     print("Created new trader with ID: " .. trader.id .. " at position: " .. x .. ", " .. y)
@@ -40,6 +41,26 @@ end
 
 -- Update all traders
 function Trader.update(traders, game, dt)
+    -- TRACK ROAD CHANGES
+    if not game.lastRoadCount then
+        game.lastRoadCount = #(game.roads or {})
+    end
+    
+    -- Check if roads changed
+    local currentRoadCount = #(game.roads or {})
+    local roadsChanged = (game.lastRoadCount ~= currentRoadCount)
+    game.lastRoadCount = currentRoadCount
+    
+    -- If roads changed, force all traders to recalculate paths
+    if roadsChanged then
+        print("Roads changed - forcing traders to recalculate paths")
+        for _, t in ipairs(traders) do
+            if t.movementInfo then
+                t.movementInfo.lastUpdateDist = nil -- Force recalculation
+            end
+        end
+    end
+    
     for i = #traders, 1, -1 do
         local trader = traders[i]
         
@@ -51,80 +72,191 @@ function Trader.update(traders, game, dt)
         trader.lastPos.x = trader.x
         trader.lastPos.y = trader.y
         
-        -- Process based on current state
-        if trader.state == "seeking_market" then
-            -- Find a foreign market building
-            if not trader.targetMarketId then
-                trader:findForeignMarket(game)
-            else
-                -- Make sure target market still exists
-                local targetMarket = trader:getTargetMarket(game)
-                if not targetMarket then
-                    -- Target market was destroyed - find a new one
-                    trader.targetMarketId = nil
-                    trader:findForeignMarket(game)
-                else
-                    -- Move toward target market building
-                    trader:moveTowardsTarget(game, dt)
-                    
-                    -- Check if reached target market
-                    if Utils.distance(trader.x, trader.y, targetMarket.x, targetMarket.y) < 10 then
-                        trader.state = "trading"
-                        trader.tradingTimer = trader.tradingTime
-                        trader.hasVisitedForeignMarket = true
+        -- FORCE RE-CHECK FOR MARKETS EVERY 5 SECONDS
+        if not trader.marketCheckTimer then
+            trader.marketCheckTimer = 0
+        end
+        
+        trader.marketCheckTimer = trader.marketCheckTimer + dt
+        if trader.marketCheckTimer > 5 then
+            trader.marketCheckTimer = 0
+            trader.checkedForMarkets = false -- Reset this flag to force recheck
+        end
+        
+        -- Check if there are any foreign markets
+        if not trader.checkedForMarkets then
+            trader.checkedForMarkets = true
+            
+            -- Count foreign markets
+            local foreignMarketCount = 0
+            local homeVillage = trader:getHomeVillage(game)
+            
+            if homeVillage then
+                for _, building in ipairs(game.buildings) do
+                    if building.type == "market" and building.id ~= trader.marketId then
+                        -- SIMPLIFIED CONNECTION CHECK - just verify both villages exist
+                        local targetVillage = trader:getVillageById(game, building.villageId)
+                        if targetVillage then
+                            -- Consider all other markets as potential targets
+                            foreignMarketCount = foreignMarketCount + 1
+                            print("Trader " .. trader.id .. " found foreign market in " .. game:getVillageName(targetVillage.id))
+                        end
                     end
                 end
             end
+            
+            -- Set flag if no markets to visit
+            trader.noForeignMarkets = (foreignMarketCount == 0)
+            
+            -- If trader was waiting but now has markets, reset state
+            if not trader.noForeignMarkets and trader.tradingTimer == math.huge then
+                trader.tradingTimer = trader.tradingTime
+                print("Trader " .. trader.id .. " detected new foreign market - will start trading")
+            end
+            
+            if trader.noForeignMarkets then
+                print("Trader " .. trader.id .. " has no foreign markets to visit - staying at home")
+                trader.state = "trading"
+                trader.tradingTimer = math.huge -- Stay trading forever
+            end
+        end
+        
+        -- FORCE TRADERS TO START SEEKING MARKET IF IDLE
+        if not trader.noForeignMarkets and trader.state == "trading" and not trader.hasVisitedForeignMarket and trader.tradingTimer <= 0 then
+            trader.state = "seeking_market"
+            trader.targetMarketId = nil
+            print("Trader " .. trader.id .. " forced to start seeking market")
+        end
+        
+        -- Skip all movement/state changes if no foreign markets
+        if trader.noForeignMarkets then
+            goto continue
+        end
+        
+        -- Simple stuck detection
+        if not trader.stuckCheck then
+            trader.stuckCheck = {
+                x = trader.x,
+                y = trader.y,
+                timer = 0
+            }
+        end
+        
+        if Utils.distance(trader.x, trader.y, trader.stuckCheck.x, trader.stuckCheck.y) < 1 then
+            trader.stuckCheck.timer = trader.stuckCheck.timer + dt
+            if trader.stuckCheck.timer > 5 then
+                -- Really stuck, reset and nudge position
+                trader.stuckCheck.timer = 0
+                trader.stuckCheck.x = trader.x
+                trader.stuckCheck.y = trader.y
+                print("Trader " .. trader.id .. " is stuck, nudging position")
+                
+                -- Nudge position in a random direction
+                for angle = 0, 315, 45 do
+                    local radAngle = math.rad(angle)
+                    local testX = trader.x + math.cos(radAngle) * 10
+                    local testY = trader.y + math.sin(radAngle) * 10
+                    
+                    -- Check if valid position (not water/mountain)
+                    if game.map and game.map:getTileTypeAtWorld(testX, testY) ~= game.map.TILE_WATER and 
+                                    game.map:getTileTypeAtWorld(testX, testY) ~= game.map.TILE_MOUNTAIN then
+                        trader.x = testX
+                        trader.y = testY
+                        break
+                    end
+                end
+            end
+        else
+            trader.stuckCheck.timer = 0
+            trader.stuckCheck.x = trader.x
+            trader.stuckCheck.y = trader.y
+        end
+        
+        -- STATE MACHINE
+        if trader.state == "seeking_market" then
+            if not trader.targetMarketId then
+                trader:findForeignMarket(game)
+                
+                -- Failsafe if no foreign market found
+                if not trader.targetMarketId or trader.targetMarketId == trader.marketId then
+                    print("Trader " .. trader.id .. " found no foreign markets")
+                    trader.state = "trading"
+                    trader.tradingTimer = trader.tradingTime
+                    goto continue  -- Skip to next trader
+                end
+            end
+            
+            -- Make sure target market exists
+            local targetMarket = trader:getTargetMarket(game)
+            if not targetMarket then
+                trader.targetMarketId = nil
+                goto continue  -- Skip to next iteration
+            end
+            
+            -- Move to market
+            trader:moveTowardsTarget(game, dt, targetMarket.x, targetMarket.y)
+            
+            -- Check if arrived
+            local distToTarget = Utils.distance(trader.x, trader.y, targetMarket.x, targetMarket.y)
+            if distToTarget < 20 then
+                trader.state = "trading"
+                trader.tradingTimer = trader.tradingTime
+                trader.hasVisitedForeignMarket = true
+                print("Trader " .. trader.id .. " arrived at foreign market")
+            end
         elseif trader.state == "trading" then
-            -- Spend time trading at the market
             trader.tradingTimer = trader.tradingTimer - dt
             
-            -- Add a timeout to avoid getting stuck in trading state
             if trader.tradingTimer <= 0 then
-                -- If at foreign market, prepare to return home
-                if trader.hasVisitedForeignMarket and trader.targetMarketId ~= trader.marketId then
+                if trader.hasVisitedForeignMarket then
+                    -- Head back home
                     trader.state = "returning_home"
-                    -- Clear target so we'll set home market as target
-                    trader.targetMarketId = nil
-                    trader.targetVillageId = nil
+                    print("Trader " .. trader.id .. " heading home")
                 else
-                    -- Done trading at home market, prepare for next journey
-                    trader:completeTrade(game)
+                    -- Find new market
+                    trader.state = "seeking_market"
+                    trader.targetMarketId = nil
+                    print("Trader " .. trader.id .. " looking for market")
                 end
             end
         elseif trader.state == "returning_home" then
-            -- Find home market
-            if not trader.targetMarketId then
-                trader.targetMarketId = trader.marketId
-                trader.targetVillageId = trader.villageId
-            end
-            
-            -- Make sure home market still exists
+            -- Get home market
             local homeMarket = trader:getHomeMarket(game)
             if not homeMarket then
-                -- Home market was destroyed - remove trader
                 table.remove(traders, i)
                 goto continue
             end
             
-            -- Move toward home market building
-            trader:moveTowardsTarget(game, dt)
+            -- Move to home market
+            trader:moveTowardsTarget(game, dt, homeMarket.x, homeMarket.y)
             
-            -- Check if reached home market
-            if Utils.distance(trader.x, trader.y, homeMarket.x, homeMarket.y) < 10 then
-                -- If trader is returning from a foreign market with goods,
-                -- complete the trade immediately
+            -- Check if arrived
+            local distToHome = Utils.distance(trader.x, trader.y, homeMarket.x, homeMarket.y)
+            if distToHome < 20 then
+                print("Trader " .. trader.id .. " arrived home")
+                
+                -- Get money
                 if trader.hasVisitedForeignMarket then
-                    trader:completeTrade(game)
-                else
-                    -- Otherwise, just switch to trading state at home
-                    trader.state = "trading"
-                    trader.tradingTimer = trader.tradingTime
+                    local moneyEarned = math.floor(trader.travelDistance * trader.rewardMultiplier)
+                    game.money = game.money + moneyEarned
+                    
+                    local UI = require("ui")
+                    local homeVillageName = game:getVillageName(trader.villageId)
+                    UI.showMessage("Trader returned to " .. homeVillageName .. " with $" .. moneyEarned)
+                    
+                    trader.rewardMultiplier = math.min(0.5, trader.rewardMultiplier + 0.01)
+                    trader.travelDistance = 0
+                    trader.hasVisitedForeignMarket = false
+                    trader.journeyCount = trader.journeyCount + 1
                 end
+                
+                -- Reset to trading state
+                trader.state = "trading"
+                trader.tradingTimer = trader.tradingTime
             end
         end
         
-        -- If the market building this trader belongs to no longer exists, remove the trader
+        -- Remove if home market gone
         if not trader:getHomeMarket(game) then
             table.remove(traders, i)
         end
@@ -136,84 +268,60 @@ end
 -- Find a foreign market (in a different village)
 function Trader:findForeignMarket(game)
     local bestMarket = nil
-    local bestScore = -1
-    local totalMarkets = 0
-    local foreignMarkets = 0
+    local bestDistance = math.huge
     
-    print("Trader is trying to find a foreign market")
-    print("Trader's home village: " .. game:getVillageName(self.villageId))
+    -- Get home village
+    local homeVillage = self:getHomeVillage(game)
+    if not homeVillage then
+        return
+    end
+    
+    print("Trader " .. self.id .. " from " .. game:getVillageName(self.villageId) .. " looking for markets")
     
     -- Find a market in a different village
     for _, building in ipairs(game.buildings) do
         if building.type == "market" then
-            totalMarkets = totalMarkets + 1
-            
-            -- Skip our own market
+            -- Skip our own home market
             if building.id == self.marketId then
-                print("Found our own market, skipping")
                 goto continue
             end
             
-            print("Checking market in village: " .. game:getVillageName(building.villageId))
-            foreignMarkets = foreignMarkets + 1
+            -- Get target village
+            local targetVillage = self:getVillageById(game, building.villageId)
+            if not targetVillage then
+                goto continue
+            end
             
+            -- REMOVED CONNECTION CHECK - allow traders to go to any market
+            
+            print("Found market in " .. game:getVillageName(building.villageId))
+            
+            -- Calculate distance
             local distance = Utils.distance(self.x, self.y, building.x, building.y)
             
-            -- Prefer markets that are connected by roads
-            local homeVillage = self:getHomeVillage(game)
-            local targetVillage = self:getVillageById(game, building.villageId)
-            
-            -- Check if villages are connected (for safer travel)
-            local isConnected = homeVillage and targetVillage and 
-                                homeVillage:isConnectedTo(targetVillage, game)
-            
-            print("Distance to this market: " .. distance .. (isConnected and " (connected)" or " (not connected)"))
-            
-            -- Calculate a score based on distance and connection
-            local maxDistance = Config.WORLD_WIDTH / 2
-            
-            -- Distance score so farther markets get higher scores
-            local distanceScore = math.min(distance, maxDistance) / maxDistance
-            
-            -- Calculate final score - higher is better
-            local score = distanceScore
-            
-            print("Market score: " .. score .. " (higher is better)")
-            
-            -- Remember the market with the best score
-            if score > bestScore then
+            -- Find closest market
+            if distance < bestDistance then
                 bestMarket = building
-                bestScore = score
+                bestDistance = distance
                 self.targetVillageId = building.villageId
-                print("New best market: " .. game:getVillageName(building.villageId) .. " with score " .. score)
             end
             
             ::continue::
         end
     end
     
-    print("Found " .. totalMarkets .. " total markets, " .. foreignMarkets .. " foreign markets")
-    
     -- If found a market, set it as target
     if bestMarket then
         self.targetMarketId = bestMarket.id
-        print("Selected target market in " .. game:getVillageName(self.targetVillageId) .. " with best score " .. bestScore)
+        print("Trader " .. self.id .. " targeting market in " .. game:getVillageName(self.targetVillageId))
     else
-        -- If no foreign market, circle around home and wait for more markets to be built
+        -- No foreign markets found
+        print("Trader " .. self.id .. " found no foreign markets")
+        
+        -- Target home market
         self.targetMarketId = self.marketId
-        self.state = "returning_home"
-        
-        -- Find the home village
-        local homeVillage = self:getHomeVillage(game)
-        if homeVillage then
-            -- Set a destination to wander around the village
-            local angle = math.random() * 2 * math.pi
-            local radius = 50 + math.random() * 30
-            self.targetX = homeVillage.x + math.cos(angle) * radius
-            self.targetY = homeVillage.y + math.sin(angle) * radius
-        end
-        
-        print("No foreign markets found - will wander near home market")
+        self.state = "trading" 
+        self.tradingTimer = self.tradingTime
     end
 end
 
@@ -257,214 +365,206 @@ function Trader:getHomeMarket(game)
     return nil
 end
 
--- Move towards the current target
-function Trader:moveTowardsTarget(game, dt)
-    -- Get the target market building
-    local targetMarket = self:getTargetMarket(game)
-    if not targetMarket then
-        -- Market might have been removed, find a new one
-        self.targetMarketId = nil
-        self.currentPath = nil
+-- Move towards a target position (with road following)
+function Trader:moveTowardsTarget(game, dt, targetX, targetY)
+    if not targetX or not targetY then
         return
     end
     
-    -- Set the current target to the market's position
-    self.targetX = targetMarket.x
-    self.targetY = targetMarket.y
+    -- Calculate direction to target
+    local dx = targetX - self.x
+    local dy = targetY - self.y
+    local dist = math.sqrt(dx*dx + dy*dy)
     
-    -- Ensure game.map exists before trying to use it
-    if not game.map then
+    if dist < 2 then
         return
     end
     
-    -- Check if we need to calculate a new path
-    if not self.currentPath or #self.currentPath == 0 or
-       (self.pathTargetX ~= self.targetX or self.pathTargetY ~= self.targetY) then
-        
-        -- Calculate a new path using A* algorithm
-        -- Ensure positions are valid before pathfinding
-        if not self.x or not self.y or not self.targetX or not self.targetY then
-            return
-        end
-        
-        local tilePath = game.map:findPathAvoidingWater(self.x, self.y, self.targetX, self.targetY, true, true)
-        if tilePath then
-            self.currentPath = game.map:pathToWorldCoordinates(tilePath)
-            self.pathTargetX = self.targetX
-            self.pathTargetY = self.targetY
-            self.currentPathIndex = 1
-        else
-            -- No path found, try direct movement as fallback
-            self.currentPath = nil
-        end
+    -- Fixed movement issues:
+    -- 1. Store target to prevent small frame-to-frame variations
+    -- 2. Only update direction every 5 game units of movement
+    -- 3. Move consistently along road until next direction update
+    
+    if not self.movementInfo then
+        self.movementInfo = {
+            lastUpdateDist = 0,
+            moveX = dx / dist,
+            moveY = dy / dist,
+            onRoad = false,
+            roadDx = 0,
+            roadDy = 0,
+            lastRoadCheck = 0 -- Add timer for road checks
+        }
     end
     
-    -- If we have a valid path, follow it
-    if self.currentPath and #self.currentPath > 0 and self.currentPathIndex and self.currentPathIndex <= #self.currentPath then
-        -- Get the next waypoint
-        local waypoint = self.currentPath[self.currentPathIndex]
-        if not waypoint or not waypoint.x or not waypoint.y then
-            -- Path waypoint is invalid, recalculate path
-            self.currentPath = nil
-            return
-        end
+    -- Update road check timer
+    self.movementInfo.lastRoadCheck = self.movementInfo.lastRoadCheck + dt
+    
+    -- Only recalculate movement if:
+    -- 1. We've moved enough distance, OR
+    -- 2. It's been at least 1 second since we last checked for roads
+    local needsUpdate = (not self.movementInfo.lastUpdateDist) or
+                         (math.abs(dist - self.movementInfo.lastUpdateDist) > 5) or
+                         (self.movementInfo.lastRoadCheck > 1.0)
+    
+    if needsUpdate then
+        self.movementInfo.lastRoadCheck = 0 -- Reset road check timer
         
-        -- Move towards the current waypoint
-        local dx = waypoint.x - self.x
-        local dy = waypoint.y - self.y
-        local dist = math.sqrt(dx*dx + dy*dy)
+        -- Normalize direction
+        self.movementInfo.moveX = dx / dist
+        self.movementInfo.moveY = dy / dist
+        self.movementInfo.lastUpdateDist = dist
         
-        -- If waypoint reached, move to the next one
-        if dist < 5 then
-            self.currentPathIndex = self.currentPathIndex + 1
-            -- If we reached the end of the path, clear it
-            if self.currentPathIndex > #self.currentPath then
-                self.currentPath = nil
-            end
-            return
-        end
+        -- ENHANCED ROAD DETECTION
+        local wasOnRoad = self.movementInfo.onRoad
+        self.movementInfo.onRoad = false
+        local closestRoad = nil
+        local closestDist = 25 -- Increased from 15 to 25 pixels for better detection
         
-        -- Normalize direction vector
-        dx = dx / dist
-        dy = dy / dist
+        -- Check up to 100 units ahead along path for roads
+        local checkAheadX = self.x + self.movementInfo.moveX * 100
+        local checkAheadY = self.y + self.movementInfo.moveY * 100
         
-        -- Check if on a road for speed boost
-        local onRoad = false
         for _, road in ipairs(game.roads or {}) do
-            -- Check if near road path
-            if Utils.isPointNearLine(self.x, self.y, road.startX, road.startY, road.endX, road.endY, 10) then
-                onRoad = true
-                break
-            end
-        end
-        
-        -- Apply road speed multiplier if on a road
-        local moveSpeed = self.speed
-        if onRoad then
-            moveSpeed = moveSpeed * Config.ROAD_SPEED_MULTIPLIER
-        end
-        
-        -- Move towards the waypoint
-        self.x = self.x + dx * moveSpeed * dt
-        self.y = self.y + dy * moveSpeed * dt
-    else
-        -- No path found or direct movement fallback
-        -- Calculate direction to target
-        local dx = self.targetX - self.x
-        local dy = self.targetY - self.y
-        local dist = math.sqrt(dx*dx + dy*dy)
-        
-        -- If we've reached the target, stop moving
-        if dist < 5 then
-            return
-        end
-        
-        -- Normalize direction vector
-        dx = dx / dist
-        dy = dy / dist
-        
-        -- Check if on a road for speed boost
-        local onRoad = false
-        for _, road in ipairs(game.roads or {}) do
-            -- Check if near road path
-            if Utils.isPointNearLine(self.x, self.y, road.startX, road.startY, road.endX, road.endY, 10) then
-                onRoad = true
-                break
-            end
-        end
-        
-        -- Apply road speed multiplier if on a road
-        local moveSpeed = self.speed
-        if onRoad then
-            moveSpeed = moveSpeed * Config.ROAD_SPEED_MULTIPLIER
-        end
-        
-        -- Calculate next position
-        local nextX = self.x + dx * moveSpeed * dt
-        local nextY = self.y + dy * moveSpeed * dt
-        
-        -- Check if next position is on water or mountain
-        if game.map then
-            local nextTileType = game.map:getTileTypeAtWorld(nextX, nextY)
+            -- First check if the road intersects with our future path
+            local intersects = Utils.lineSegmentsIntersect(
+                self.x, self.y, checkAheadX, checkAheadY,
+                road.startX, road.startY, road.endX, road.endY
+            )
             
-            -- Don't move onto water or mountains
-            if nextTileType == game.map.TILE_WATER or nextTileType == game.map.TILE_MOUNTAIN then
-                -- Force recalculation of path
-                self.currentPath = nil
+            if intersects then
+                -- Road intersects our path, prioritize it
+                closestDist = 0
+                closestRoad = road
+                break
+            end
+            
+            -- Fast midpoint check
+            local roadMidX = (road.startX + road.endX) / 2
+            local roadMidY = (road.startY + road.endY) / 2
+            local roughDist = Utils.distance(self.x, self.y, roadMidX, roadMidY)
+            
+            if roughDist < 150 then -- Increased search radius
+                local dist = Utils.distanceToLine(self.x, self.y, road.startX, road.startY, road.endX, road.endY)
                 
-                -- Try getting a path with A* again
-                local tilePath = game.map:findPathAvoidingWater(self.x, self.y, self.targetX, self.targetY)
-                if tilePath then
-                    self.currentPath = game.map:pathToWorldCoordinates(tilePath)
-                    self.pathTargetX = self.targetX
-                    self.pathTargetY = self.targetY
-                    self.currentPathIndex = 1
-                    return -- Will use path next update
+                if dist < closestDist then
+                    closestDist = dist
+                    closestRoad = road
+                    
+                    if dist < 10 then -- Increased from 5 to 10
+                        self.movementInfo.onRoad = true
+                    end
                 end
-                
-                -- No path found, try basic obstacle avoidance
-                local canMoveHorizontal = game.map:getTileTypeAtWorld(self.x + dx * moveSpeed * dt, self.y) ~= game.map.TILE_WATER and
-                                          game.map:getTileTypeAtWorld(self.x + dx * moveSpeed * dt, self.y) ~= game.map.TILE_MOUNTAIN
-                
-                local canMoveVertical = game.map:getTileTypeAtWorld(self.x, self.y + dy * moveSpeed * dt) ~= game.map.TILE_WATER and
-                                        game.map:getTileTypeAtWorld(self.x, self.y + dy * moveSpeed * dt) ~= game.map.TILE_MOUNTAIN
-                
-                -- Move along one axis if possible
-                if canMoveHorizontal then
-                    self.x = self.x + dx * moveSpeed * dt
-                end
-                
-                if canMoveVertical then
-                    self.y = self.y + dy * moveSpeed * dt
-                end
-                
-                return
             end
         end
         
-        -- Move towards target if terrain is passable
-        self.x = nextX
-        self.y = nextY
-    end
-end
-
--- Complete a trade and earn money based on distance traveled
-function Trader:completeTrade(game)
-    -- Always go back to seeking market after trading at home
-    -- This ensures traders check for new markets periodically
-    self.state = "seeking_market"
-    self.targetMarketId = nil
-    self.targetVillageId = nil
-    
-    -- Only process journey rewards if trader visited a foreign market
-    if self.hasVisitedForeignMarket then
-        -- Increment journey count
-        self.journeyCount = self.journeyCount + 1
-        
-        -- Calculate money earned based on distance traveled
-        local moneyEarned = math.floor(self.travelDistance * self.rewardMultiplier)
-        
-        -- Add money to the game's treasury
-        game.money = game.money + moneyEarned
-        
-        -- Increase the reward multiplier with each journey (capped at 0.5)
-        self.rewardMultiplier = math.min(0.5, self.rewardMultiplier + 0.01)
-        
-        -- Get the names of home and target villages for the message
-        local homeVillageName = game:getVillageName(self.villageId)
-        local targetVillageName = "unknown"
-        if self.targetVillageId then
-            targetVillageName = game:getVillageName(self.targetVillageId)
+        -- If we found a road, but weren't on one before, announce it
+        if closestRoad and not wasOnRoad and self.movementInfo.onRoad then
+            print("Trader " .. self.id .. " found a road to follow!")
         end
         
-        -- Display a message with journey count and market info
-        local UI = require("ui")
-        UI.showMessage("Trader returned to " .. homeVillageName .. " market with $" .. moneyEarned .. " (Journey #" .. self.journeyCount .. ")")
-        
-        -- Reset trader for the next journey
-        self.travelDistance = 0
-        self.hasVisitedForeignMarket = false
+        -- Calculate direction for movement
+        if closestRoad then
+            -- Road found - calculate road direction
+            local roadDx = closestRoad.endX - closestRoad.startX
+            local roadDy = closestRoad.endY - closestRoad.startY
+            local roadLength = math.sqrt(roadDx*roadDx + roadDy*roadDy)
+            
+            if roadLength > 0 then
+                -- Normalize road direction
+                roadDx = roadDx / roadLength
+                roadDy = roadDy / roadLength
+                
+                -- Store road direction
+                self.movementInfo.roadDx = roadDx
+                self.movementInfo.roadDy = roadDy
+                
+                -- If on road, just use road direction
+                if self.movementInfo.onRoad then
+                    -- Check if road points toward target
+                    local dotProduct = roadDx * dx + roadDy * dy
+                    
+                    if dotProduct >= 0 then
+                        -- Use road direction
+                        self.movementInfo.moveX = roadDx
+                        self.movementInfo.moveY = roadDy
+                    else
+                        -- Use reverse road direction
+                        self.movementInfo.moveX = -roadDx
+                        self.movementInfo.moveY = -roadDy
+                    end
+                else
+                    -- If not on road, calculate point on road to move to
+                    local t = Utils.projectPointOntoLine(self.x, self.y, closestRoad.startX, closestRoad.startY, closestRoad.endX, closestRoad.endY)
+                    local roadPointX = closestRoad.startX + t * (closestRoad.endX - closestRoad.startX)
+                    local roadPointY = closestRoad.startY + t * (closestRoad.endY - closestRoad.startY)
+                    
+                    -- Direction to road
+                    local toRoadX = roadPointX - self.x
+                    local toRoadY = roadPointY - self.y
+                    local toRoadDist = math.sqrt(toRoadX*toRoadX + toRoadY*toRoadY)
+                    
+                    if toRoadDist > 0.1 then
+                        -- Move toward road with a stronger bias
+                        self.movementInfo.moveX = toRoadX / toRoadDist
+                        self.movementInfo.moveY = toRoadY / toRoadDist
+                    end
+                end
+            end
+        end
     end
+    
+    -- Set speed based on road status
+    local moveSpeed = self.speed
+    if self.movementInfo.onRoad then
+        moveSpeed = moveSpeed * Config.ROAD_SPEED_MULTIPLIER
+    end
+    
+    -- Calculate next position using consistent direction
+    local nextX = self.x + self.movementInfo.moveX * moveSpeed * dt
+    local nextY = self.y + self.movementInfo.moveY * moveSpeed * dt
+    
+    -- Check terrain BEFORE moving
+    if game.map then
+        local nextTileType = game.map:getTileTypeAtWorld(nextX, nextY)
+        
+        -- Don't walk on water or mountains
+        if nextTileType == game.map.TILE_WATER or nextTileType == game.map.TILE_MOUNTAIN then
+            -- Try different directions - starting with closest to desired direction
+            local angles = {0, 45, 90, 135, 180, 225, 270, 315}
+            table.sort(angles, function(a, b)
+                local targetAngle = math.deg(math.atan2(self.movementInfo.moveY, self.movementInfo.moveX))
+                if targetAngle < 0 then targetAngle = targetAngle + 360 end
+                
+                local diffA = math.abs((a - targetAngle) % 360)
+                if diffA > 180 then diffA = 360 - diffA end
+                
+                local diffB = math.abs((b - targetAngle) % 360)
+                if diffB > 180 then diffB = 360 - diffB end
+                
+                return diffA < diffB
+            end)
+            
+            for _, angle in ipairs(angles) do
+                local radAngle = math.rad(angle)
+                local testX = self.x + math.cos(radAngle) * moveSpeed * dt
+                local testY = self.y + math.sin(radAngle) * moveSpeed * dt
+                
+                local testTileType = game.map:getTileTypeAtWorld(testX, testY)
+                if testTileType ~= game.map.TILE_WATER and testTileType ~= game.map.TILE_MOUNTAIN then
+                    nextX = testX
+                    nextY = testY
+                    -- Force direction recalculation next frame
+                    self.movementInfo.lastUpdateDist = nil
+                    break
+                end
+            end
+        end
+    end
+    
+    -- Update position
+    self.x = nextX
+    self.y = nextY
 end
 
 -- Draw the trader
@@ -557,6 +657,65 @@ function Trader:draw()
     if stateColors[self.state] then
         love.graphics.setColor(stateColors[self.state])
         love.graphics.circle("fill", self.x, self.y - 18, 4)
+    end
+end
+
+-- Add these utility functions if they don't exist already
+if not Utils.distanceToLine then
+    -- Calculate shortest distance from point to line segment
+    function Utils.distanceToLine(px, py, x1, y1, x2, y2)
+        local lineLength = Utils.distance(x1, y1, x2, y2)
+        if lineLength == 0 then
+            return Utils.distance(px, py, x1, y1)
+        end
+        
+        -- Calculate projection
+        local t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (lineLength * lineLength)
+        t = math.max(0, math.min(1, t))
+        
+        -- Find nearest point on line
+        local nearestX = x1 + t * (x2 - x1)
+        local nearestY = y1 + t * (y2 - y1)
+        
+        -- Return distance to nearest point
+        return Utils.distance(px, py, nearestX, nearestY)
+    end
+end
+
+if not Utils.projectPointOntoLine then
+    -- Project point onto line and return t parameter (0 to 1 if on segment)
+    function Utils.projectPointOntoLine(px, py, x1, y1, x2, y2)
+        local lineLength = Utils.distance(x1, y1, x2, y2)
+        if lineLength == 0 then
+            return 0
+        end
+        
+        -- Calculate projection
+        local t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (lineLength * lineLength)
+        return math.max(0, math.min(1, t))
+    end
+end
+
+if not Utils.findNearestPointOnLine then
+    -- Find nearest point on line segment
+    function Utils.findNearestPointOnLine(px, py, x1, y1, x2, y2)
+        local t = Utils.projectPointOntoLine(px, py, x1, y1, x2, y2)
+        
+        return {
+            x = x1 + t * (x2 - x1),
+            y = y1 + t * (y2 - y1)
+        }
+    end
+end
+
+if not Utils.lineSegmentsIntersect then
+    function Utils.lineSegmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4)
+        -- Calculate the direction of the lines
+        local uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+        local uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+        
+        -- If uA and uB are between 0-1, lines are colliding
+        return (uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1)
     end
 end
 

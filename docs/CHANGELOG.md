@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Traders not returning, ignoring paths, dropping market.
 - Fixed saving building and unit to world coordinate mismatch.
 
 ## [0.1.5] - 2025-03-25

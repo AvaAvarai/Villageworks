@@ -267,7 +267,7 @@ function Building:drawText(UI)
         -- Draw black background behind text for better visibility
         local nameWidth = UI.entityNameFont:getWidth(name)
         local nameHeight = UI.entityNameFont:getHeight()
-        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.setColor(0, 0, 0, 0.25)
         love.graphics.rectangle("fill", self.x - 10, self.y - 30, nameWidth, nameHeight)
         
         -- Draw text
@@ -280,7 +280,8 @@ function Building:drawText(UI)
             -- Draw black background behind text
             local countText = self.currentVillagers .. "/" .. self.villagerCapacity
             local countWidth = love.graphics.getFont():getWidth(countText)
-            love.graphics.setColor(0, 0, 0, 0.7)
+            
+            love.graphics.setColor(0, 0, 0, 0.25)
             love.graphics.rectangle("fill", self.x - 10, self.y + 15, countWidth, 15)
             
             -- Draw count text
@@ -297,7 +298,7 @@ function Building:drawText(UI)
             -- Draw black background behind text
             local countText = self.currentTraders .. "/" .. self.traderCapacity
             local countWidth = love.graphics.getFont():getWidth(countText)
-            love.graphics.setColor(0, 0, 0, 0.7)
+            love.graphics.setColor(0, 0, 0, 0.25)
             love.graphics.rectangle("fill", self.x - 10, self.y + 15, countWidth, 15)
             
             -- Draw count text
@@ -307,14 +308,14 @@ function Building:drawText(UI)
             -- If trader is being produced, show timer
             if self.currentTraders < self.traderCapacity then
                 local percentDone = 1 - (self.traderTimer / Config.BUILDING_TYPES.market.spawnTime)
-                love.graphics.setColor(1, 0.7, 0.1, 0.7)
+                love.graphics.setColor(1, 0.7, 0.1, 0.25)
                 love.graphics.rectangle("fill", self.x - 10, self.y + 25, 20 * percentDone, 3)
             end
         else
             -- Draw black background behind text
             local countText = #self.workers .. "/" .. self.workersNeeded
             local countWidth = love.graphics.getFont():getWidth(countText)
-            love.graphics.setColor(0, 0, 0, 0.7)
+            love.graphics.setColor(0, 0, 0, 0.25)
             love.graphics.rectangle("fill", self.x - 10, self.y + 15, countWidth, 15)
             
             -- Draw count text

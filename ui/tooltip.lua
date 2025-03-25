@@ -176,10 +176,8 @@ function Tooltip.draw(x, y)
     end
     
     -- Draw background
-    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.setColor(0, 0, 0, 0.25)
     love.graphics.rectangle("fill", x, y, width, height)
-    love.graphics.setColor(1, 1, 1, 0.5)
-    love.graphics.rectangle("line", x, y, width, height)
     
     -- Draw title
     love.graphics.setColor(1, 1, 1)

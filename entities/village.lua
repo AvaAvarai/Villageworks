@@ -275,7 +275,7 @@ function Village:draw(game)
     local displayName = self.name .. " (" .. tierName .. ")"
     local nameWidth = UI.entityNameFont:getWidth(displayName)
     local nameHeight = UI.entityNameFont:getHeight()
-    love.graphics.setColor(0, 0, 0, 1.0)
+    love.graphics.setColor(0, 0, 0, 0.25)
     love.graphics.rectangle("fill", self.x - 20, self.y - 30, nameWidth, nameHeight)
     
     -- Draw the name in white

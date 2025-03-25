@@ -68,6 +68,12 @@ function Village.new(x, y)
         tier = Village.TIERS.VILLAGE -- Start as basic village
     }, Village)
     
+    -- Set the map tile at this position to the village tile
+    local Map = require("map")
+    if Map and Map.setTileTypeAtWorld then
+        Map:setTileTypeAtWorld(x, y, Map.TILE_VILLAGE)
+    end
+    
     return village
 end
 
@@ -260,27 +266,7 @@ function Village:countFutureJobSpots(game)
 end
 
 function Village:draw(game)
-    -- Count job spots for village
-    local currentJobSpots = self:countJobSpots(game)
-    local futureJobSpots = self:countFutureJobSpots(game)
-    
-    -- Set village color based on job spots vs villagers ratio
-    if self.villagerCount >= currentJobSpots then
-        -- Green: more villagers than job spots (good) - all jobs are filled
-        love.graphics.setColor(0.2, 0.8, 0.2)
-    elseif self.villagerCount >= futureJobSpots then
-        -- Yellow: will be more villagers than job spots after queued buildings
-        love.graphics.setColor(0.8, 0.8, 0.2)
-    else
-        -- Red: more job spots than villagers (need more villagers)
-        love.graphics.setColor(0.8, 0.2, 0.2)
-    end
-    
-    -- Draw bigger circle for higher tiers
-    local radius = 15 + (self.tier - 1) * 2
-    love.graphics.circle("fill", self.x, self.y, radius)
-    love.graphics.setColor(1, 1, 1)
-    -- Use the entity name font for the village name
+    -- The village is already drawn as a tile, so we only need to draw the name label
     local currentFont = love.graphics.getFont()
     love.graphics.setFont(UI.entityNameFont)
     

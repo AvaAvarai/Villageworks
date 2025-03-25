@@ -10,6 +10,7 @@ Map.TILE_FOREST = 2
 Map.TILE_GRASS = 3
 Map.TILE_ROAD = 4
 Map.TILE_WATER = 5
+Map.TILE_VILLAGE = 6 -- New village tile type
 
 -- Keep track of planned road tiles
 Map.plannedRoads = {} -- Format: {[y] = {[x] = true}}
@@ -22,8 +23,8 @@ function Map.init()
     -- Load tileset
     Map.tileset = love.graphics.newImage("data/tiles.png")
     
-    -- Set tile dimensions - exactly 5 tiles @ 32px each
-    local tileCount = 5  -- mountain, forest, grass, road, water
+    -- Set tile dimensions - now 6 tiles @ 32px each (mountain, forest, grass, road, water, village)
+    local tileCount = 6  -- Update to include the village tile
     Map.tileSize = 32
     
     -- Create tile quads for each tile in the tileset
@@ -175,7 +176,7 @@ function Map:draw(camera)
     tileEndY = math.min(Map.height, tileEndY + 1)
     
     -- Keep count of tile types drawn for debugging
-    local drawnTiles = {0, 0, 0, 0, 0}
+    local drawnTiles = {0, 0, 0, 0, 0, 0} -- Updated to include village tile
     
     -- Draw all visible tiles
     for y = tileStartY, tileEndY do
@@ -184,19 +185,23 @@ function Map:draw(camera)
             local worldX = (x - 1) * Map.tileSize
             local worldY = (y - 1) * Map.tileSize
             
-            -- Count the tile type being drawn
-            drawnTiles[tileType] = drawnTiles[tileType] + 1
+            -- Count the tile type being drawn (only if it's a valid index)
+            if tileType and tileType >= 1 and tileType <= #drawnTiles then
+                drawnTiles[tileType] = drawnTiles[tileType] + 1
+            end
             
             -- Set color (full brightness for regular tiles)
             love.graphics.setColor(1, 1, 1, 1)
             
-            -- Draw the normal tile
-            love.graphics.draw(
-                Map.tileset,
-                Map.quads[tileType],
-                worldX,
-                worldY
-            )
+            -- Draw the normal tile (make sure the quad exists)
+            if tileType and Map.quads[tileType] then
+                love.graphics.draw(
+                    Map.tileset,
+                    Map.quads[tileType],
+                    worldX,
+                    worldY
+                )
+            end
             
             -- If this is a planned road, draw the road tile with transparency on top
             if Map:isPlannedRoad(x, y) then
@@ -217,9 +222,10 @@ function Map:draw(camera)
     
     -- Optional debug mode: print out what was drawn in this frame
     if false then -- Set to true to enable debug output
-        print(string.format("Drew: Mountains: %d, Forests: %d, Grass: %d, Roads: %d, Water: %d",
+        print(string.format("Drew: Mountains: %d, Forests: %d, Grass: %d, Roads: %d, Water: %d, Villages: %d",
             drawnTiles[Map.TILE_MOUNTAIN], drawnTiles[Map.TILE_FOREST], 
-            drawnTiles[Map.TILE_GRASS], drawnTiles[Map.TILE_ROAD], drawnTiles[Map.TILE_WATER]))
+            drawnTiles[Map.TILE_GRASS], drawnTiles[Map.TILE_ROAD], drawnTiles[Map.TILE_WATER],
+            drawnTiles[Map.TILE_VILLAGE]))
     end
 end
 

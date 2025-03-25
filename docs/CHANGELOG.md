@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Village tile.
 - Village upgrade to Town to City to Empire button improving build radius.
 
 ### Changed

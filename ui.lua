@@ -613,13 +613,6 @@ function drawEntities(game)
     -- Draw all villages
     for _, village in ipairs(game.villages) do
         village:draw(game)
-        
-        -- Highlight selected village
-        if game.selectedVillage and village.id == game.selectedVillage.id then
-            love.graphics.setColor(1, 1, 0, 0.3)
-            love.graphics.circle("line", village.x, village.y, 18)
-            love.graphics.circle("line", village.x, village.y, 20)
-        end
     end
     
     -- Draw all villagers

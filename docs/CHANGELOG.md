@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Centered building names above their building.
 - Updated the docs/ABOUT.md.
 - Village name not overlap tile completely.
 - Build menu horizontal draw limits.

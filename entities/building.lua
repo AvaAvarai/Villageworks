@@ -268,11 +268,11 @@ function Building:drawText(UI)
         local nameWidth = UI.entityNameFont:getWidth(name)
         local nameHeight = UI.entityNameFont:getHeight()
         love.graphics.setColor(0, 0, 0, 0.25)
-        love.graphics.rectangle("fill", self.x - 10, self.y - 30, nameWidth, nameHeight)
+        love.graphics.rectangle("fill", self.x - nameWidth / 2, self.y - 30, nameWidth, nameHeight)
         
         -- Draw text
         love.graphics.setColor(1, 1, 1)
-        love.graphics.print(name, self.x - 10, self.y - 30)
+        love.graphics.print(name, self.x - nameWidth / 2, self.y - 30)
         love.graphics.setFont(currentFont)
         
         -- Display workers or villagers or traders

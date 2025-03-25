@@ -15,10 +15,8 @@ function UI.init()
     UI.bigFont = love.graphics.newFont(20)
     UI.mediumFont = love.graphics.newFont(16)
     UI.smallFont = love.graphics.newFont(10)
-    UI.titleFont = love.graphics.newFont(48)  -- Larger font for titles
-    UI.entityNameFont = love.graphics.newFont(16)  -- New font for entity names with higher DPI
-    
-    -- Font for main menu
+    UI.titleFont = love.graphics.newFont(48)
+    UI.entityNameFont = love.graphics.newFont(16)
     UI.menuFont = love.graphics.newFont(32)
     
     -- Pre-load background image
@@ -26,7 +24,7 @@ function UI.init()
     
     -- UI scaling factor for different screen densities
     UI.dpiScale = 1
-    
+
     -- UI state
     UI.hoveredBuilding = nil
     UI.hoveredVillage = nil
